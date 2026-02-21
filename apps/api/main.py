@@ -139,3 +139,19 @@ def dashboard(
         net=net,
         by_category=by_category,
     )
+    from fastapi.responses import PlainTextResponse
+import csv
+import io
+
+@app.get("/transactions/export", response_class=PlainTextResponse)
+def export_transactions_csv(db: Session = Depends(get_db)):
+    rows = db.query(models.Transaction).order_by(models.Transaction.id.desc()).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "date", "amount", "category", "type", "note"])
+
+    for t in rows:
+        writer.writerow([t.id, t.date, float(t.amount), t.category.name, t.category.type, t.note or ""])
+
+    return output.getvalue()

@@ -198,3 +198,8 @@ export default function TransactionsPage() {
     </main>
   );
 }
+export async function exportTransactionsCSV(): Promise<string> {
+  const r = await fetch(`${API_BASE}/transactions/export`, { cache: "no-store" });
+  if (!r.ok) throw new Error("Failed to export CSV");
+  return r.text();
+}
