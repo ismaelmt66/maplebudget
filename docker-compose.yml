@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: maplebudget_db
+    environment:
+      POSTGRES_DB: maplebudget
+      POSTGRES_USER: maplebudget
+      POSTGRES_PASSWORD: maplebudget
+    ports:
+      - "5432:5432"
+    volumes:
+      - maplebudget_db_data:/var/lib/postgresql/data
+
+volumes:
+  maplebudget_db_data:
