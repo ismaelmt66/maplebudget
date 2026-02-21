@@ -20,3 +20,5 @@ pnpm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+apps/api/app.db
+apps/api/app.db
