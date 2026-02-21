@@ -45,3 +45,20 @@ export async function createTransaction(payload: {
   if (!r.ok) throw new Error("Failed to create transaction");
   return r.json();
 }
+export type Dashboard = {
+  income_total: number;
+  expense_total: number;
+  net: number;
+  by_category: { category_id: number; name: string; type: string; total: number }[];
+};
+
+export async function getDashboard(params?: { from_date?: string; to_date?: string }): Promise<Dashboard> {
+  const qs = new URLSearchParams();
+  if (params?.from_date) qs.set("from_date", params.from_date);
+  if (params?.to_date) qs.set("to_date", params.to_date);
+
+  const url = `${API_BASE}/dashboard${qs.toString() ? `?${qs}` : ""}`;
+  const r = await fetch(url, { cache: "no-store" });
+  if (!r.ok) throw new Error("Failed to load dashboard");
+  return r.json();
+}
