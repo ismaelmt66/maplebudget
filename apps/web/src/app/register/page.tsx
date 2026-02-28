@@ -1,0 +1,105 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { registerUser, loginUser } from "@/lib/api";
+import { setToken } from "@/lib/auth";
+
+export default function RegisterPage() {
+  const r = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (password !== password2) {
+      setErr("Les mots de passe ne correspondent pas.");
+      return;
+    }
+    if (password.length < 6) {
+      setErr("Mot de passe trop court (min 6).");
+      return;
+    }
+
+    try {
+      setErr(null);
+      setLoading(true);
+      await registerUser({ email, password });
+      // auto-login après register
+      const res = await loginUser({ email, password });
+      setToken(res.access_token);
+      r.push("/dashboard");
+    } catch (e: any) {
+      setErr(e?.message ?? "Erreur");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="max-w-md mx-auto border rounded-3xl p-7">
+      <h1 className="text-2xl font-semibold">Register</h1>
+      <p className="text-sm opacity-70 mt-2">
+        Crée ton compte. Tes données seront séparées de celles des autres utilisateurs.
+      </p>
+
+      {err && (
+        <div className="mt-4 border rounded-2xl p-3 text-sm">
+          <b>Erreur:</b> {err}
+        </div>
+      )}
+
+      <form onSubmit={onSubmit} className="mt-6 space-y-3 text-sm">
+        <label className="block">
+          Email
+          <input
+            className="mt-1 w-full border rounded-xl px-3 py-2"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+          />
+        </label>
+
+        <label className="block">
+          Mot de passe
+          <input
+            type="password"
+            className="mt-1 w-full border rounded-xl px-3 py-2"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+          />
+        </label>
+
+        <label className="block">
+          Confirmer le mot de passe
+          <input
+            type="password"
+            className="mt-1 w-full border rounded-xl px-3 py-2"
+            value={password2}
+            onChange={(e) => setPassword2(e.target.value)}
+            autoComplete="new-password"
+          />
+        </label>
+
+        <button
+          disabled={loading}
+          className="w-full border rounded-xl px-4 py-2 hover:bg-black/5 transition disabled:opacity-50"
+        >
+          {loading ? "Création…" : "Créer le compte"}
+        </button>
+      </form>
+
+      <div className="mt-5 text-sm opacity-70">
+        Déjà un compte ?{" "}
+        <Link className="underline underline-offset-4" href="/login">
+          Se connecter
+        </Link>
+      </div>
+    </main>
+  );
+}
