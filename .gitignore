@@ -22,3 +22,5 @@ Thumbs.db
 .idea/
 apps/api/app.db
 apps/api/app.db
+apps/api/app.db
+apps/api/*.db
