@@ -323,6 +323,7 @@ export default function TransactionsPage() {
               className="border rounded-xl px-3 py-2 text-sm"
               value={catType}
               onChange={(e) => setCatType(e.target.value as any)}
+              aria-label="Type de catégorie"
             >
               <option value="expense">expense</option>
               <option value="income">income</option>
@@ -373,11 +374,12 @@ export default function TransactionsPage() {
               Catégorie
               <select
                 className="mt-1 w-full border rounded-xl px-3 py-2 text-sm"
-                value={categoryId ?? ""}
+                aria-label="Catégorie de la transaction"
+                value={categoryId !== null ? String(categoryId) : ""}
                 onChange={(e) => setCategoryId(Number(e.target.value))}
               >
                 {cats.map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <option key={c.id} value={String(c.id)}>
                     {c.name} ({c.type})
                   </option>
                 ))}
@@ -432,6 +434,7 @@ export default function TransactionsPage() {
             Type
             <select
               className="mt-1 w-full border rounded-xl px-3 py-2 text-sm"
+                aria-label="Filtrer par type"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as any)}
             >
@@ -465,6 +468,7 @@ export default function TransactionsPage() {
             Tri
             <select
               className="mt-1 w-full border rounded-xl px-3 py-2 text-sm"
+                aria-label="Trier les transactions"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
             >
@@ -562,11 +566,13 @@ export default function TransactionsPage() {
                         Catégorie
                         <select
                           className="mt-1 w-full border rounded-xl px-3 py-2 text-sm"
-                          value={eCategoryId ?? ""}
+                          value={eCategoryId !== null ? String(eCategoryId) : ""}
                           onChange={(e) => setECategoryId(Number(e.target.value))}
+                          title="Sélectionner une catégorie"
+                          aria-label="Catégorie de la transaction"
                         >
                           {cats.map((c) => (
-                            <option key={c.id} value={c.id}>
+                            <option key={c.id} value={String(c.id)}>
                               {c.name} ({c.type})
                             </option>
                           ))}
