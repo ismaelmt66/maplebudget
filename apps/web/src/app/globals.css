@@ -1,26 +1,52 @@
 @import "tailwindcss";
 
+/* ========== Bank Theme (Institutional) ========== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Core */
+  --bg: 245 247 251;          /* cool off-white */
+  --surface: 255 255 255;     /* cards */
+  --surface-2: 241 245 249;   /* subtle panels */
+  --text: 15 23 42;           /* slate-900 */
+  --muted: 71 85 105;         /* slate-600 */
+  --border: 226 232 240;      /* slate-200 */
+
+  /* Brand */
+  --navy: 8 22 54;            /* deep navy */
+  --navy-2: 12 33 84;         /* brighter navy */
+  --emerald: 16 185 129;      /* accent */
+  --gold: 245 197 66;         /* premium accent */
+
+  /* System */
+  --danger: 220 38 38;
+  --ring: 16 185 129;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Base */
+html, body { height: 100%; }
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: rgb(var(--bg));
+  color: rgb(var(--text));
 }
+
+/* Make borders consistent */
+* { border-color: rgb(var(--border)); }
+
+/* Premium background mesh */
+.bank-mesh {
+  background:
+    radial-gradient(900px 500px at 15% -10%, rgba(12, 33, 84, 0.14), transparent 55%),
+    radial-gradient(700px 420px at 90% 0%, rgba(245, 197, 66, 0.13), transparent 55%),
+    radial-gradient(700px 520px at 60% 110%, rgba(16, 185, 129, 0.12), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.0));
+}
+
+::selection {
+  background: rgba(16,185,129,0.20);
+}
+
+a { color: inherit; }
+
+/* Nice scrollbars (optional) */
+*::-webkit-scrollbar { height: 10px; width: 10px; }
+*::-webkit-scrollbar-thumb { background: rgba(2,6,23,0.12); border-radius: 999px; }
+*::-webkit-scrollbar-track { background: rgba(2,6,23,0.04); }
