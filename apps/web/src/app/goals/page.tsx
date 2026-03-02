@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Goal, GoalPlan, createGoal, deleteGoal, getGoalPlan, getGoals, updateGoal } from "@/lib/api";
+import { useEffect, useMemo, useState } from "react";
+import { ApiError, createGoal, deleteGoal, getGoalPlan, getGoals, updateGoal, Goal, GoalPlan } from "@/lib/api";
 
 const LOCALE = "fr-CA";
 const CURRENCY = "CAD";
@@ -10,17 +10,16 @@ const CURRENCY = "CAD";
 function money(n: number) {
   return new Intl.NumberFormat(LOCALE, { style: "currency", currency: CURRENCY }).format(n);
 }
-
-function pct(current: number, target: number) {
+function pct(cur: number, target: number) {
   if (target <= 0) return 0;
-  return Math.max(0, Math.min(100, (current / target) * 100));
+  return Math.max(0, Math.min(100, (cur / target) * 100));
 }
 
 export default function GoalsPage() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [plans, setPlans] = useState<Record<number, GoalPlan>>({});
-  const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // create form
   const [title, setTitle] = useState("Voiture");
@@ -38,8 +37,7 @@ export default function GoalsPage() {
       const g = await getGoals();
       setGoals(g);
 
-      // fetch plans for each goal
-      const planPairs = await Promise.all(
+      const pairs = await Promise.all(
         g.map(async (x) => {
           try {
             const p = await getGoalPlan(x.id);
@@ -51,10 +49,14 @@ export default function GoalsPage() {
       );
 
       const next: Record<number, GoalPlan> = {};
-      for (const [id, p] of planPairs) if (p) next[id] = p;
+      for (const [id, p] of pairs) if (p) next[id] = p;
       setPlans(next);
     } catch (e: any) {
-      setErr(e?.message ?? "Erreur");
+      if (e instanceof ApiError && e.status === 401) {
+        setErr("Tu dois être connecté pour gérer les objectifs.");
+      } else {
+        setErr(e?.message ?? "Erreur");
+      }
     } finally {
       setLoading(false);
     }
@@ -63,6 +65,12 @@ export default function GoalsPage() {
   useEffect(() => {
     load();
   }, []);
+
+  const totals = useMemo(() => {
+    const target = goals.reduce((s, g) => s + Number(g.target_amount), 0);
+    const cur = goals.reduce((s, g) => s + Number(g.current_amount), 0);
+    return { target, cur, p: pct(cur, target) };
+  }, [goals]);
 
   async function onCreate() {
     try {
@@ -79,14 +87,14 @@ export default function GoalsPage() {
     }
   }
 
-  async function onDeposit(goal: Goal) {
-    const dep = Number(depositByGoal[goal.id] ?? 0);
+  async function onDeposit(g: Goal) {
+    const dep = Number(depositByGoal[g.id] ?? 0);
     if (!dep || dep <= 0) return;
 
     try {
       setErr(null);
-      await updateGoal(goal.id, { current_amount: Number(goal.current_amount) + dep });
-      setDepositByGoal((m) => ({ ...m, [goal.id]: 0 }));
+      await updateGoal(g.id, { current_amount: Number(g.current_amount) + dep });
+      setDepositByGoal((m) => ({ ...m, [g.id]: 0 }));
       await load();
     } catch (e: any) {
       setErr(e?.message ?? "Erreur");
@@ -104,114 +112,98 @@ export default function GoalsPage() {
     }
   }
 
-  const totalTargets = useMemo(() => goals.reduce((s, g) => s + Number(g.target_amount), 0), [goals]);
-  const totalCurrent = useMemo(() => goals.reduce((s, g) => s + Number(g.current_amount), 0), [goals]);
-
   return (
     <main className="space-y-8">
       <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold">Objectifs</h1>
-          <p className="text-sm opacity-70 mt-1">
-            Plan mensuel + suivi + dépôts. (Multi-utilisateur : chacun ses objectifs.)
-          </p>
+          <div className="flex flex-wrap gap-2">
+            <span className="mb-badge">Goals</span>
+            <span className="mb-badge">{goals.length} objectif(s)</span>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mt-3">Objectifs</h1>
+          <p className="text-sm opacity-70 mt-2">Plan mensuel + dépôts + progression.</p>
         </div>
-
         <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={load}
-            className="border rounded-xl px-4 py-2 text-sm hover:bg-black/5 transition"
-            disabled={loading}
-          >
-            {loading ? "Chargement…" : "Rafraîchir"}
+          <Link className="mb-btn" href="/dashboard">Dashboard</Link>
+          <Link className="mb-btn" href="/transactions">Transactions</Link>
+          <button className="mb-btn" onClick={load} disabled={loading}>
+            {loading ? "…" : "Rafraîchir"}
           </button>
-          <Link href="/dashboard" className="border rounded-xl px-4 py-2 text-sm hover:bg-black/5 transition">
-            Dashboard
-          </Link>
-          <Link href="/transactions" className="border rounded-xl px-4 py-2 text-sm hover:bg-black/5 transition">
-            Transactions
-          </Link>
         </div>
       </section>
 
       {err && (
-        <div className="border rounded-2xl p-4 text-sm">
-          <b>Erreur:</b> {err}
+        <div className="mb-card-soft p-6" style={{ borderColor: "rgba(239,68,68,0.25)", background: "rgba(239,68,68,0.06)" }}>
+          <div className="font-semibold">Erreur</div>
+          <div className="text-sm opacity-80 mt-2">{err}</div>
+          <div className="mt-4">
+            <Link className="mb-btn mb-btn-primary" href="/login">Se connecter</Link>
+          </div>
         </div>
       )}
 
-      {/* Overview */}
       <section className="grid gap-4 md:grid-cols-3">
-        <div className="border rounded-2xl p-5">
+        <div className="mb-card-soft p-5 mb-lift">
           <div className="text-sm opacity-70">Total objectifs</div>
-          <div className="text-2xl font-semibold mt-1">{money(totalTargets)}</div>
+          <div className="text-2xl font-semibold mt-1">{money(totals.target)}</div>
         </div>
-        <div className="border rounded-2xl p-5">
+        <div className="mb-card-soft p-5 mb-lift">
           <div className="text-sm opacity-70">Déjà épargné</div>
-          <div className="text-2xl font-semibold mt-1">{money(totalCurrent)}</div>
+          <div className="text-2xl font-semibold mt-1">{money(totals.cur)}</div>
         </div>
-        <div className="border rounded-2xl p-5">
+        <div className="mb-card-soft p-5 mb-lift">
           <div className="text-sm opacity-70">Progression globale</div>
-          <div className="text-2xl font-semibold mt-1">{pct(totalCurrent, totalTargets).toFixed(1)}%</div>
+          <div className="text-2xl font-semibold mt-1">{totals.p.toFixed(1)}%</div>
         </div>
       </section>
 
-      {/* Create goal */}
-      <section className="border rounded-3xl p-6">
-        <div className="font-semibold">Créer un objectif</div>
-        <div className="text-sm opacity-70 mt-1">Ex: Voiture, Épargne de sécurité, Frais de scolarité…</div>
+      <section className="grid gap-4 lg:grid-cols-12">
+        {/* Create */}
+        <div className="lg:col-span-4 mb-card-soft p-6">
+          <div className="text-base font-semibold">Créer un objectif</div>
+          <div className="text-sm opacity-70 mt-1">Voiture, épargne de sécurité, frais de scolarité…</div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-4 text-sm">
-          <label>
-            Titre
-            <input className="mt-1 w-full border rounded-xl px-3 py-2" value={title} onChange={(e) => setTitle(e.target.value)} />
-          </label>
+          <div className="mt-4 grid gap-3">
+            <label className="text-sm">
+              Titre
+              <input className="mb-input mt-1" value={title} onChange={(e) => setTitle(e.target.value)} />
+            </label>
+            <label className="text-sm">
+              Montant cible
+              <input className="mb-input mt-1" type="number" value={targetAmount} onChange={(e) => setTargetAmount(Number(e.target.value))} />
+            </label>
+            <label className="text-sm">
+              Déjà épargné
+              <input className="mb-input mt-1" type="number" value={currentAmount} onChange={(e) => setCurrentAmount(Number(e.target.value))} />
+            </label>
+            <label className="text-sm">
+              Date cible
+              <input className="mb-input mt-1" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+            </label>
 
-          <label>
-            Montant cible
-            <input type="number" className="mt-1 w-full border rounded-xl px-3 py-2" value={targetAmount} onChange={(e) => setTargetAmount(Number(e.target.value))} />
-          </label>
-
-          <label>
-            Déjà épargné
-            <input type="number" className="mt-1 w-full border rounded-xl px-3 py-2" value={currentAmount} onChange={(e) => setCurrentAmount(Number(e.target.value))} />
-          </label>
-
-          <label>
-            Date cible
-            <input type="date" className="mt-1 w-full border rounded-xl px-3 py-2" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
-          </label>
-        </div>
-
-        <button onClick={onCreate} className="mt-4 border rounded-xl px-4 py-2 text-sm hover:bg-black/5 transition">
-          Créer
-        </button>
-      </section>
-
-      {/* Goals list */}
-      <section className="border rounded-3xl p-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <div className="font-semibold">Mes objectifs</div>
-            <div className="text-sm opacity-70 mt-1">Plan calculé automatiquement (mois restants + épargne mensuelle).</div>
+            <button className="mb-btn mb-btn-primary" onClick={onCreate}>Créer</button>
           </div>
-          <div className="text-sm opacity-70">{goals.length} objectif(s)</div>
         </div>
 
-        <div className="mt-5 space-y-4">
-          {loading ? (
-            <div className="text-sm opacity-70">Chargement…</div>
-          ) : goals.length === 0 ? (
-            <div className="text-sm opacity-70">Aucun objectif pour le moment.</div>
-          ) : (
-            goals.map((g) => {
+        {/* List */}
+        <div className="lg:col-span-8 mb-card-soft p-6">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <div className="text-base font-semibold">Mes objectifs</div>
+              <div className="text-sm opacity-70 mt-1">Plan mensuel calculé automatiquement.</div>
+            </div>
+            <span className="mb-badge">Top: Voiture / Épargne</span>
+          </div>
+
+          <div className="mt-4 space-y-4">
+            {goals.map((g) => {
               const p = plans[g.id];
               const prog = pct(Number(g.current_amount), Number(g.target_amount));
               const remaining = Math.max(0, Number(g.target_amount) - Number(g.current_amount));
 
               return (
-                <div key={g.id} className="border rounded-3xl p-5">
-                  <div className="flex items-start justify-between gap-4">
+                <div key={g.id} className="mb-card-soft p-5 mb-lift">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-lg font-semibold truncate">{g.title}</div>
                       <div className="text-sm opacity-70 mt-1">
@@ -219,56 +211,56 @@ export default function GoalsPage() {
                       </div>
                       <div className="text-xs opacity-60 mt-1">Date cible: {g.target_date}</div>
                     </div>
-
-                    <button
-                      onClick={() => onDelete(g.id)}
-                      className="border rounded-xl px-3 py-2 text-sm hover:bg-black/5 transition"
-                    >
-                      Supprimer
-                    </button>
+                    <button className="mb-btn" onClick={() => onDelete(g.id)}>Supprimer</button>
                   </div>
 
-                  <div className="mt-4 h-2 rounded-full bg-black/10 overflow-hidden">
-                    <div className="h-full bg-black/60" style={{ width: `${prog}%` }} />
+                  <div className="mt-4 h-2 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full"
+                      style={{
+                        width: `${prog}%`,
+                        background: "linear-gradient(90deg, rgba(96,165,250,0.55), rgba(34,197,94,0.25))",
+                      }}
+                    />
                   </div>
                   <div className="text-xs opacity-60 mt-2">{prog.toFixed(1)}% complété</div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-3 text-sm">
-                    <div className="border rounded-2xl p-4">
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    <div className="mb-card-soft p-4">
                       <div className="text-xs opacity-70">Mois restants</div>
                       <div className="text-lg font-semibold mt-1">{p ? p.months_remaining : "—"}</div>
                     </div>
-                    <div className="border rounded-2xl p-4">
-                      <div className="text-xs opacity-70">Épargne mensuelle requise</div>
+                    <div className="mb-card-soft p-4">
+                      <div className="text-xs opacity-70">Mensuel requis</div>
                       <div className="text-lg font-semibold mt-1">{p ? money(p.monthly_required) : "—"}</div>
                     </div>
-                    <div className="border rounded-2xl p-4">
-                      <div className="text-xs opacity-70">Action: dépôt</div>
+                    <div className="mb-card-soft p-4">
+                      <div className="text-xs opacity-70">Dépôt</div>
                       <div className="mt-2 flex gap-2">
                         <input
                           type="number"
-                          className="flex-1 border rounded-xl px-3 py-2 text-sm"
+                          className="mb-input"
+                          style={{ width: "100%" }}
                           placeholder="ex: 50"
                           value={depositByGoal[g.id] ?? 0}
                           onChange={(e) => setDepositByGoal((m) => ({ ...m, [g.id]: Number(e.target.value) }))}
                         />
-                        <button
-                          onClick={() => onDeposit(g)}
-                          className="border rounded-xl px-3 py-2 text-sm hover:bg-black/5 transition"
-                        >
+                        <button className="mb-btn mb-btn-primary" onClick={() => onDeposit(g)}>
                           Ajouter
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-4 text-xs opacity-60">
-                    Astuce : ajoute un dépôt après chaque paie. Le plan se met à jour automatiquement.
+                  <div className="mt-3 text-xs opacity-60">
+                    Astuce : ajoute un dépôt après chaque paie pour rendre le plan réaliste.
                   </div>
                 </div>
               );
-            })
-          )}
+            })}
+
+            {!goals.length && <div className="text-sm opacity-70">Aucun objectif pour le moment.</div>}
+          </div>
         </div>
       </section>
     </main>

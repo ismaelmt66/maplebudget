@@ -1,52 +1,195 @@
 @import "tailwindcss";
 
-/* ========== Bank Theme (Institutional) ========== */
+/* ============================
+   MapleBudget — Premium Bank UI (Stable)
+   - High readability
+   - Calm palette
+   - Light motion only
+   ============================ */
+
 :root {
   /* Core */
-  --bg: 245 247 251;          /* cool off-white */
-  --surface: 255 255 255;     /* cards */
-  --surface-2: 241 245 249;   /* subtle panels */
-  --text: 15 23 42;           /* slate-900 */
-  --muted: 71 85 105;         /* slate-600 */
-  --border: 226 232 240;      /* slate-200 */
+  --mb-bg0: 8 12 22;     /* deep navy */
+  --mb-bg1: 10 16 30;    /* slightly brighter */
+  --mb-card: 255 255 255;
+  --mb-text: 236 243 255;
+  --mb-muted: 160 174 202;
 
-  /* Brand */
-  --navy: 8 22 54;            /* deep navy */
-  --navy-2: 12 33 84;         /* brighter navy */
-  --emerald: 16 185 129;      /* accent */
-  --gold: 245 197 66;         /* premium accent */
+  /* Accents (institutional) */
+  --mb-primary: 96 165 250;   /* blue */
+  --mb-primary2: 99 102 241;  /* indigo */
+  --mb-good: 34 197 94;
+  --mb-warn: 234 179 8;
+  --mb-bad: 239 68 68;
 
-  /* System */
-  --danger: 220 38 38;
-  --ring: 16 185 129;
+  --mb-border: 255 255 255;
+  --mb-ring: 96 165 250;
+
+  color-scheme: dark;
 }
 
-/* Base */
 html, body { height: 100%; }
+
 body {
-  background: rgb(var(--bg));
-  color: rgb(var(--text));
-}
-
-/* Make borders consistent */
-* { border-color: rgb(var(--border)); }
-
-/* Premium background mesh */
-.bank-mesh {
+  color: rgb(var(--mb-text));
   background:
-    radial-gradient(900px 500px at 15% -10%, rgba(12, 33, 84, 0.14), transparent 55%),
-    radial-gradient(700px 420px at 90% 0%, rgba(245, 197, 66, 0.13), transparent 55%),
-    radial-gradient(700px 520px at 60% 110%, rgba(16, 185, 129, 0.12), transparent 55%),
-    linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.0));
+    radial-gradient(1100px 650px at 10% 8%, rgba(96,165,250,0.16), transparent 55%),
+    radial-gradient(900px 600px at 92% 12%, rgba(99,102,241,0.12), transparent 55%),
+    radial-gradient(1200px 900px at 45% 110%, rgba(34,197,94,0.06), transparent 60%),
+    linear-gradient(180deg, rgb(var(--mb-bg1)) 0%, rgb(var(--mb-bg0)) 60%, rgb(var(--mb-bg1)) 100%);
 }
 
-::selection {
-  background: rgba(16,185,129,0.20);
+/* Selection */
+::selection { background: rgba(96,165,250,0.22); }
+
+/* Scrollbars (subtle) */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 999px; }
+*::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); }
+
+/* Container */
+.mb-container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 26px;
+}
+@media (min-width: 768px) {
+  .mb-container { padding: 34px; }
 }
 
-a { color: inherit; }
+/* Card (premium, stable) */
+.mb-card {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 22px;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.35);
+}
 
-/* Nice scrollbars (optional) */
-*::-webkit-scrollbar { height: 10px; width: 10px; }
-*::-webkit-scrollbar-thumb { background: rgba(2,6,23,0.12); border-radius: 999px; }
-*::-webkit-scrollbar-track { background: rgba(2,6,23,0.04); }
+.mb-card-soft {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 18px;
+}
+
+/* Soft lift (hover only) */
+.mb-lift {
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+.mb-lift:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.075);
+}
+
+/* Buttons */
+.mb-btn {
+  border-radius: 16px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  transition: background 160ms ease, border-color 160ms ease, transform 120ms ease;
+}
+.mb-btn:hover { background: rgba(255,255,255,0.10); border-color: rgba(255,255,255,0.20); }
+.mb-btn:active { transform: translateY(1px); }
+
+.mb-btn-primary {
+  background: linear-gradient(180deg, rgba(96,165,250,0.26), rgba(96,165,250,0.10));
+  border-color: rgba(96,165,250,0.34);
+}
+.mb-btn-primary:hover {
+  background: linear-gradient(180deg, rgba(96,165,250,0.34), rgba(96,165,250,0.12));
+}
+
+.mb-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+}
+.mb-btn-ghost:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.10);
+}
+
+/* Inputs */
+.mb-input {
+  width: 100%;
+  border-radius: 16px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.22);
+}
+.mb-input:focus {
+  outline: none;
+  border-color: rgba(var(--mb-ring), 0.50);
+  box-shadow: 0 0 0 4px rgba(var(--mb-ring), 0.18);
+}
+
+/* Badge */
+.mb-badge {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.05);
+  font-size: 12px;
+  opacity: 0.92;
+}
+
+/* Marquee (slow + pause on hover) */
+.mb-marquee {
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.05);
+}
+.mb-marquee-track {
+  display: flex;
+  width: max-content;
+  gap: 12px;
+  padding: 12px 14px;
+  animation: mbMarquee 55s linear infinite;
+}
+.mb-marquee:hover .mb-marquee-track { animation-play-state: paused; }
+
+.mb-marquee-item {
+  white-space: nowrap;
+  font-size: 13px;
+  opacity: 0.86;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.20);
+  padding: 8px 10px;
+  border-radius: 999px;
+}
+
+@keyframes mbMarquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Light “breathing” background (very subtle) */
+@keyframes mbBreathe {
+  0% { opacity: 0.55; transform: translateY(0); }
+  50% { opacity: 0.75; transform: translateY(-8px); }
+  100% { opacity: 0.55; transform: translateY(0); }
+}
+
+/* Only if user allows motion */
+@media (prefers-reduced-motion: no-preference) {
+  .mb-float { animation: mbBreathe 7s ease-in-out infinite; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mb-float { animation: none; }
+  .mb-marquee-track { animation: none; }
+}
+
+/* Tooltip (for charts) */
+.mb-tooltip {
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.50);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  padding: 12px 12px;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.45);
+}
