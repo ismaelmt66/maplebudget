@@ -230,7 +230,7 @@ export default function AssetsPage() {
     const incomeCategories = categories.filter(c => c.type === "income");
 
     return (
-        <main className="max-w-7xl mx-auto space-y-10 pb-16 px-4">
+        <main suppressHydrationWarning className="max-w-7xl mx-auto space-y-10 pb-16 px-4">
 
             {/* ── Hero Header ───────────────────────────────── */}
             <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 animate-fade-in-up pt-4">

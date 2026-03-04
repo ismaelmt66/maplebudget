@@ -1,0 +1,42 @@
+
+> nexleger-web@2.0.0 dev
+> next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://132.213.176.116:3000
+- Environments: .env.local
+
+✓ Starting...
+✓ Ready in 2.6s
+ GET /assets 200 in 1360ms (compile: 951ms, render: 409ms)
+ GET /assets 200 in 68ms (compile: 6ms, render: 62ms)
+ GET /assets 200 in 263ms (compile: 11ms, render: 252ms)
+ GET /assets 200 in 1352ms (compile: 445ms, render: 908ms)
+ GET /assets 200 in 412ms (compile: 112ms, render: 301ms)
+ GET /coach 200 in 1040ms (compile: 962ms, render: 77ms)
+ GET /goals 200 in 375ms (compile: 320ms, render: 55ms)
+ GET /assets 200 in 55ms (compile: 11ms, render: 44ms)
+ GET /goals 200 in 97ms (compile: 13ms, render: 84ms)
+ GET /assets 200 in 102ms (compile: 18ms, render: 83ms)
+✓ Compiled in 3s
+✓ Compiled in 216ms
+ GET /assets 200 in 229ms (compile: 49ms, render: 180ms)
+ GET /assets 200 in 323ms (compile: 106ms, render: 217ms)
+ GET /assets 200 in 1165ms (compile: 289ms, render: 876ms)
+ GET /assets 200 in 2.2s (compile: 617ms, render: 1608ms)
+ GET /assets 200 in 1968ms (compile: 910ms, render: 1058ms)
+✓ Compiled in 2.2s
+ GET /assets 200 in 1124ms (compile: 581ms, render: 543ms)
+ GET /assets 200 in 332ms (compile: 163ms, render: 169ms)
+ GET /assets 200 in 152ms (compile: 13ms, render: 139ms)
+ GET / 200 in 292ms (compile: 223ms, render: 70ms)
+ GET /assets 200 in 70ms (compile: 20ms, render: 50ms)
+ GET /assets 200 in 130ms (compile: 16ms, render: 114ms)
+ GET /login 200 in 849ms (compile: 713ms, render: 137ms)
+ GET /assets 200 in 157ms (compile: 27ms, render: 130ms)
+ GET /assets 200 in 1506ms (compile: 544ms, render: 963ms)
+  Reload env: .env.local
+✓ Compiled in 1129ms
+ GET /assets 200 in 1407ms (compile: 745ms, render: 662ms)
+ GET /assets 200 in 265ms (compile: 50ms, render: 215ms)
