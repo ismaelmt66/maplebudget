@@ -1,6 +1,8 @@
 {
-  "name": "web",
-  "version": "0.1.0",
+  "name": "maplebudget-web",
+  "version": "2.0.0",
+  "description": "Premium Personal Finance Planner with AI integration",
+  "author": "Ismael",
   "private": true,
   "scripts": {
     "dev": "next dev",
