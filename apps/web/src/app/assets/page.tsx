@@ -552,7 +552,7 @@ export default function AssetsPage() {
                         <Input value={assetForm.name} onChange={e => setAssetForm(p => ({ ...p, name: e.target.value }))} required placeholder="Ex: Livret A" />
                     </div>
                     <div><label className="text-sm text-white/60 mb-1 block">Type</label>
-                        <select className="mb-input" value={assetForm.type} onChange={e => setAssetForm(p => ({ ...p, type: e.target.value }))}>
+                        <select className="w-full rounded-xl bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all" value={assetForm.type} onChange={e => setAssetForm(p => ({ ...p, type: e.target.value }))}>
                             <option value="checking">Compte Courant</option>
                             <option value="savings">Épargne</option>
                             <option value="stock">Bourse / Placements</option>
@@ -578,21 +578,21 @@ export default function AssetsPage() {
                         <Input value={ruleForm.name} onChange={e => setRuleForm(p => ({ ...p, name: e.target.value }))} required placeholder="Ex: Épargne mensuelle automatique" />
                     </div>
                     <div><label className="text-sm text-white/60 mb-1 block">Source de revenus</label>
-                        <select className="mb-input" value={ruleForm.source_type} onChange={e => setRuleForm(p => ({ ...p, source_type: e.target.value }))}>
+                        <select className="w-full rounded-xl bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all" value={ruleForm.source_type} onChange={e => setRuleForm(p => ({ ...p, source_type: e.target.value }))}>
                             <option value="all_income">Tous les revenus</option>
                             <option value="category">Catégorie spécifique</option>
                         </select>
                     </div>
                     {ruleForm.source_type === "category" && (
                         <div><label className="text-sm text-white/60 mb-1 block">Catégorie source</label>
-                            <select className="mb-input" value={ruleForm.source_category_id} onChange={e => setRuleForm(p => ({ ...p, source_category_id: e.target.value }))} required>
+                            <select className="w-full rounded-xl bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all" value={ruleForm.source_category_id} onChange={e => setRuleForm(p => ({ ...p, source_category_id: e.target.value }))} required>
                                 <option value="">-- Choisir --</option>
                                 {incomeCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         </div>
                     )}
                     <div><label className="text-sm text-white/60 mb-1 block">Actif cible</label>
-                        <select className="mb-input" value={ruleForm.target_asset_id} onChange={e => setRuleForm(p => ({ ...p, target_asset_id: e.target.value }))} required>
+                        <select className="w-full rounded-xl bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all" value={ruleForm.target_asset_id} onChange={e => setRuleForm(p => ({ ...p, target_asset_id: e.target.value }))} required>
                             <option value="">-- Choisir un actif --</option>
                             {assets.filter(a => a.type !== "liability").map(a => <option key={a.id} value={a.id}>{a.name} ({money(a.balance)})</option>)}
                         </select>
