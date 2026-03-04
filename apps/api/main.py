@@ -24,7 +24,7 @@ app = FastAPI(title="MapleBudget API", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|(\d{1,3}\.){3}\d{1,3}):3000",
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|(\d{1,3}\.){3}\d{1,3}):300[0-9]",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
