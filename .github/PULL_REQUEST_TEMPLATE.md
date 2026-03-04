@@ -1,6 +1,6 @@
 ## Description de la PR 🍁
 
-Merci pour ta contribution à NexLeger !
+Merci pour ta contribution à NexLedger !
 Lien vers l'issue liée (si applicable) : Closes #
 
 Détaille ici les modifications apportées par cette PR. 

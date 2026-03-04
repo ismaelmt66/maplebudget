@@ -4,7 +4,7 @@ import HeaderBar from "@/components/HeaderBar";
 import { ToastProvider } from "@/components/ui/Toast";
 
 export const metadata: Metadata = {
-  title: "NexLeger — Portfolio FinTech",
+  title: "NexLedger — Portfolio FinTech",
   description: "Budget & Analytics (educational).",
 };
 
@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
 
             <footer className="mt-14 text-xs opacity-60">
-              NexLeger — portfolio FinTech (educational). Next.js + FastAPI.
+              NexLedger — portfolio FinTech (educational). Next.js + FastAPI.
             </footer>
           </div>
         </ToastProvider>

@@ -1,4 +1,4 @@
-"""Définitions ORM supportant l’API NexLeger.
+"""Définitions ORM supportant l’API NexLedger.
 
 Chaque classe correspond à une table ; les relations sont définies pour
 faciliter la navigation entre utilisateurs, catégories, transactions et objectifs.

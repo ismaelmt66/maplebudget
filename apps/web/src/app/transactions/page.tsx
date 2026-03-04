@@ -83,8 +83,8 @@ export default function TransactionsPage(): React.JSX.Element {
   // Écouteur global pour l'ajout rapide via la HeaderBar
   useEffect(() => {
     const handleTxAdded = () => load();
-    window.addEventListener('nexleger-tx-added', handleTxAdded);
-    return () => window.removeEventListener('nexleger-tx-added', handleTxAdded);
+    window.addEventListener('nexledger-tx-added', handleTxAdded);
+    return () => window.removeEventListener('nexledger-tx-added', handleTxAdded);
   }, [load]);
 
   const filtered = useMemo(() => {

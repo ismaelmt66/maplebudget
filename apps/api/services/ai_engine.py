@@ -1,5 +1,5 @@
 """
-God Mode AI Coach for MapleBudget.
+God Mode AI Coach for NexLedger.
 
 process_query() uses an LLM (Groq by default, Anthropic as fallback) with a rich
 financial context injected as system prompt — answers ANY question in French.
@@ -43,7 +43,7 @@ def _strip_accents(text: str) -> str:
 
 class FinancialAIEngine:
     """
-    Moteur IA God Mode pour MapleBudget.
+    Moteur IA God Mode pour NexLedger.
     Analyse transactions, objectifs et actifs → rapports Markdown ultra-riches.
     """
 
@@ -835,7 +835,7 @@ class FinancialAIEngine:
 
     def _build_system_prompt(self) -> str:
         financial_context = self._build_financial_context()
-        return f"""Tu es un coach financier personnel expert, intégré dans l'application MapleBudget.
+        return f"""Tu es un coach financier personnel expert, intégré dans l'application NexLedger.
 Tu as accès aux données financières réelles de l'utilisateur ci-dessous.
 Tu réponds TOUJOURS en français, de façon claire, précise et personnalisée.
 Tu utilises du Markdown (gras, listes, tableaux) pour structurer tes réponses.

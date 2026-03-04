@@ -1,15 +1,15 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: nexleger_db
+    container_name: nexledger_db
     environment:
-      POSTGRES_DB: nexleger
-      POSTGRES_USER: nexleger
-      POSTGRES_PASSWORD: nexleger
+      POSTGRES_DB: nexledger
+      POSTGRES_USER: nexledger
+      POSTGRES_PASSWORD: nexledger
     ports:
       - "5432:5432"
     volumes:
-      - nexleger_db_data:/var/lib/postgresql/data
+      - nexledger_db_data:/var/lib/postgresql/data
 
 volumes:
-  nexleger_db_data:
+  nexledger_db_data:

@@ -1,5 +1,5 @@
 /**
- * Core API client for NexLeger.
+ * Core API client for NexLedger.
  * Handles authentication headers, error parsing, and type definitions.
  */
 import { getToken } from "@/lib/auth";

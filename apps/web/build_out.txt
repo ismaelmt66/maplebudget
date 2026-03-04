@@ -1,5 +1,5 @@
 
-> nexleger-web@2.0.0 build
+> nexledger-web@2.0.0 build
 > next build
 
 ▲ Next.js 16.1.6 (Turbopack)

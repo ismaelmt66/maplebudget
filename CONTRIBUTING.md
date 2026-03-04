@@ -1,6 +1,6 @@
 # Guide de Contribution 🍁
 
-Merci d'envisager de contribuer à **NexLeger** ! Que ce soit pour remonter un bug, suggérer une fonctionnalité ou écrire du code, votre aide est inestimable pour rendre la gestion financière accessible et élégante.
+Merci d'envisager de contribuer à **NexLedger** ! Que ce soit pour remonter un bug, suggérer une fonctionnalité ou écrire du code, votre aide est inestimable pour rendre la gestion financière accessible et élégante.
 
 ## 🐛 Remonter un Bug
 

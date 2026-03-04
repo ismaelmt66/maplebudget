@@ -1,7 +1,7 @@
 /**
  * Authentication utilities: token storage and retrieval.
  */
-const KEY = "nexleger_token";
+const KEY = "nexledger_token";
 
 /**
  * Retrieve the JWT token from local storage.

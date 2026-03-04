@@ -204,7 +204,7 @@ export default function HeaderBar() {
               </svg>
             </div>
             <div className="leading-tight">
-              <div className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">NexLeger</div>
+              <div className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">NexLedger</div>
             </div>
           </Link>
 
@@ -305,7 +305,7 @@ export default function HeaderBar() {
         isOpen={isQuickAddOpen}
         onClose={() => setIsQuickAddOpen(false)}
         onSuccess={() => {
-          window.dispatchEvent(new CustomEvent('nexleger-tx-added'));
+          window.dispatchEvent(new CustomEvent('nexledger-tx-added'));
         }}
       />
     </header>
