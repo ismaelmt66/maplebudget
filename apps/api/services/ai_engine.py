@@ -165,3 +165,124 @@ En tant que votre **Coach IA**, je peux analyser :
 
 Que souhaitez-vous explorer aujourd'hui ? 🤖
 """
+
+    def analyze_patrimoine(self) -> str:
+        """Analyse complète du patrimoine : diversification, fonds d'urgence, recommandations IA."""
+        from collections import defaultdict
+
+        if not self.assets:
+            return "## 📊 Analyse Patrimoine\n\n> [!NOTE]\n> Vous n'avez aucun actif enregistré. Commencez par ajouter vos comptes (courant, épargne, placements) pour débloquer l'analyse complète."
+
+        # --- Calcul des KPIs ---
+        type_totals: dict[str, float] = defaultdict(float)
+        total_pos = 0.0
+        total_liabilities = 0.0
+
+        for a in self.assets:
+            bal = float(a.balance)
+            if a.type == "liability":
+                total_liabilities += bal
+            else:
+                total_pos += bal
+                type_totals[a.type] += bal
+
+        net_worth = total_pos - total_liabilities
+
+        # --- Score de Diversification (0 à 100) ---
+        asset_types = [t for t, v in type_totals.items() if v > 0]
+        n_types = len(asset_types)
+        diversity_score = min(n_types * 25, 100)   # 25pts par type distinct (max 4 types = 100)
+
+        diversity_label = (
+            "🟢 Excellente" if diversity_score >= 75
+            else "🟡 Moyenne" if diversity_score >= 50
+            else "🔴 Faible"
+        )
+
+        # --- Fonds d'urgence (règle : 3 mois de dépenses) ---
+        curr_start, curr_end = self._get_current_month_boundaries()
+        monthly_expenses = sum(
+            float(t.amount)
+            for t, c in self.transactions
+            if c.type == "expense" and curr_start <= t.date <= curr_end
+        )
+        if monthly_expenses == 0:
+            last_start, last_end = self._get_last_month_boundaries()
+            monthly_expenses = sum(
+                float(t.amount)
+                for t, c in self.transactions
+                if c.type == "expense" and last_start <= t.date <= last_end
+            )
+
+        emergency_target = monthly_expenses * 3
+        liquid_balance = type_totals.get("checking", 0) + type_totals.get("savings", 0)
+        emergency_ok = liquid_balance >= emergency_target
+        emergency_pct = (liquid_balance / emergency_target * 100) if emergency_target > 0 else 100
+
+        # --- Ratio dette/actif ---
+        debt_ratio = (total_liabilities / (total_pos + 0.01)) * 100
+
+        # --- Recommandations ---
+        recommendations = []
+
+        if not emergency_ok and emergency_target > 0:
+            missing = emergency_target - liquid_balance
+            recommendations.append(
+                f"⚠️ **Fonds d'urgence insuffisant** : Vous avez {liquid_balance:.2f} $ en liquidités pour un objectif de {emergency_target:.2f} $ (3 mois de dépenses). Il vous manque **{missing:.2f} $**. Créez une règle d'allocation pour automatiser cet objectif."
+            )
+
+        if "stock" not in type_totals and "crypto" not in type_totals and net_worth > 5000:
+            recommendations.append(
+                "📈 **Diversification conseillée** : Votre patrimoine est concentré en liquidités. Envisagez d'allouer 10-20% en placements boursiers (ETF, fonds indiciels) pour faire fructifier votre argent sur le long terme."
+            )
+
+        if debt_ratio > 40:
+            recommendations.append(
+                f"🏦 **Niveau d'endettement élevé** : Vos dettes représentent {debt_ratio:.1f}% de vos actifs. Priorisez le remboursement des dettes à taux d'intérêt élevé avant d'investir."
+            )
+
+        if diversity_score >= 75:
+            recommendations.append(
+                "✅ **Excellente diversification** : Votre portefeuille est bien équilibré entre différentes classes d'actifs. Continuez à rééquilibrer périodiquement."
+            )
+
+        if not recommendations:
+            recommendations.append("✅ **Votre patrimoine est en excellente santé !** Continuez à alimenter vos comptes régulièrement et utilisez les règles d'allocation pour automatiser votre épargne.")
+
+        # --- Rapport Final ---
+        report = f"""## 🧠 Analyse IA de votre Patrimoine
+
+### 📊 Vue d'Ensemble
+
+| Indicateur | Valeur |
+|---|---|
+| **Patrimoine Net** | {net_worth:,.2f} $ |
+| **Actifs Productifs** | {total_pos:,.2f} $ |
+| **Dettes & Emprunts** | {total_liabilities:,.2f} $ |
+| **Ratio Dette/Actif** | {debt_ratio:.1f}% |
+
+---
+
+### 🎯 Score de Diversification : **{diversity_score}/100** — {diversity_label}
+
+Types d'actifs détectés : {', '.join(asset_types) if asset_types else 'Aucun'}
+
+"""
+
+        if emergency_target > 0:
+            report += f"""### 🛡️ Fonds d'Urgence
+- **Objectif (3 mois)** : {emergency_target:,.2f} $
+- **Disponible** : {liquid_balance:,.2f} $ ({emergency_pct:.0f}%)
+- **Statut** : {"✅ Couvert" if emergency_ok else "⚠️ Insuffisant"}
+
+---
+
+"""
+
+        report += "### 💡 Recommandations\n\n"
+        for rec in recommendations:
+            report += f"- {rec}\n"
+
+        report += "\n> [!TIP]\n> Utilisez les **Règles d'Allocation** pour automatiser votre épargne : définissez qu'un pourcentage de vos revenus soit directement viré vers vos actifs cibles à chaque paie."
+
+        return report

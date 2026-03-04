@@ -192,3 +192,48 @@ class ChatMessage(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
 
+
+# --- Allocation Rules (Smart Savings Automation) ---
+
+class AllocationRuleCreate(BaseModel):
+    name: str
+    source_type: str  # 'all_income' | 'category'
+    source_category_id: Optional[int] = None
+    target_asset_id: int
+    allocation_percent: float  # 0.0 – 100.0
+
+class AllocationRuleUpdate(BaseModel):
+    name: Optional[str] = None
+    source_type: Optional[str] = None
+    source_category_id: Optional[int] = None
+    target_asset_id: Optional[int] = None
+    allocation_percent: Optional[float] = None
+    is_active: Optional[bool] = None
+
+class AllocationRuleOut(BaseModel):
+    id: int
+    name: str
+    source_type: str
+    source_category_id: Optional[int] = None
+    source_category_name: Optional[str] = None
+    target_asset_id: int
+    target_asset_name: str
+    allocation_percent: float
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+class AllocationSimulateRequest(BaseModel):
+    income_amount: float  # Le montant à utiliser pour la simulation
+
+class AllocationSimulateResult(BaseModel):
+    rule_id: int
+    rule_name: str
+    target_asset_name: str
+    allocated_amount: float
+    percent: float
+
+class AllocationApplyRequest(BaseModel):
+    income_amount: float
+    income_category_id: Optional[int] = None  # Pour filtrer les règles par catégorie source

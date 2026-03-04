@@ -287,3 +287,80 @@ export async function sendChatMessage(message: string): Promise<{ reply: string 
     body: JSON.stringify({ message }),
   }) as Promise<{ reply: string }>;
 }
+
+/* ---------- Smart Allocation Rules ---------- */
+
+export type AllocationRule = {
+  id: number;
+  name: string;
+  source_type: "all_income" | "category";
+  source_category_id?: number | null;
+  source_category_name?: string | null;
+  target_asset_id: number;
+  target_asset_name: string;
+  allocation_percent: number;
+  is_active: boolean;
+};
+
+export type AllocationSimulateResult = {
+  rule_id: number;
+  rule_name: string;
+  target_asset_name: string;
+  allocated_amount: number;
+  percent: number;
+};
+
+export type ApplyResult = {
+  applied: { rule_name: string; asset_name: string; allocated_amount: number; new_balance: number }[];
+  count: number;
+  total_allocated: number;
+};
+
+export async function getAllocationRules(): Promise<AllocationRule[]> {
+  return apiFetch("/assets/allocation-rules") as Promise<AllocationRule[]>;
+}
+
+export async function createAllocationRule(payload: {
+  name: string;
+  source_type: string;
+  source_category_id?: number | null;
+  target_asset_id: number;
+  allocation_percent: number;
+}): Promise<AllocationRule> {
+  return apiFetch("/assets/allocation-rules", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }) as Promise<AllocationRule>;
+}
+
+export async function updateAllocationRule(
+  id: number,
+  payload: Partial<{ name: string; source_type: string; source_category_id: number | null; target_asset_id: number; allocation_percent: number; is_active: boolean }>
+): Promise<AllocationRule> {
+  return apiFetch(`/assets/allocation-rules/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  }) as Promise<AllocationRule>;
+}
+
+export async function deleteAllocationRule(id: number): Promise<void> {
+  await apiFetch(`/assets/allocation-rules/${id}`, { method: "DELETE" });
+}
+
+export async function simulateAllocation(income_amount: number): Promise<AllocationSimulateResult[]> {
+  return apiFetch("/assets/allocation-rules/simulate", {
+    method: "POST",
+    body: JSON.stringify({ income_amount }),
+  }) as Promise<AllocationSimulateResult[]>;
+}
+
+export async function applyAllocation(income_amount: number, income_category_id?: number): Promise<ApplyResult> {
+  return apiFetch("/assets/allocation-rules/apply", {
+    method: "POST",
+    body: JSON.stringify({ income_amount, income_category_id }),
+  }) as Promise<ApplyResult>;
+}
+
+export async function getPatrimoineAIAnalysis(): Promise<{ report: string }> {
+  return apiFetch("/assets/ai-analysis") as Promise<{ report: string }>;
+}

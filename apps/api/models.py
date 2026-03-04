@@ -87,3 +87,21 @@ class AssetHistory(Base):
     balance: Mapped[float] = mapped_column(Numeric(12, 2))
     
     asset: Mapped["Asset"] = relationship(back_populates="history")
+
+
+class AllocationRule(Base):
+    """Règle d'allocation automatique : X% d'une source de revenus → actif cible."""
+    __tablename__ = "allocation_rules"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(120))  # Ex: "Épargne d'urgence"
+    source_type: Mapped[str] = mapped_column(String(32))  # 'all_income' | 'category'
+    source_category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"), nullable=True)
+    target_asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id"))
+    allocation_percent: Mapped[float] = mapped_column(Numeric(5, 2))  # 0–100
+    is_active: Mapped[bool] = mapped_column(default=True)
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user: Mapped["User"] = relationship()
+    target_asset: Mapped["Asset"] = relationship()
+    source_category: Mapped["Category | None"] = relationship()
