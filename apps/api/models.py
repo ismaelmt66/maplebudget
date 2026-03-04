@@ -1,4 +1,4 @@
-"""Définitions ORM supportant l’API MapleBudget.
+"""Définitions ORM supportant l’API NexLeger.
 
 Chaque classe correspond à une table ; les relations sont définies pour
 faciliter la navigation entre utilisateurs, catégories, transactions et objectifs.

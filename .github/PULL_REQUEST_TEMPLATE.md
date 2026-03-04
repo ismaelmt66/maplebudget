@@ -1,6 +1,6 @@
 ## Description de la PR 🍁
 
-Merci pour ta contribution à MapleBudget !
+Merci pour ta contribution à NexLeger !
 Lien vers l'issue liée (si applicable) : Closes #
 
 Détaille ici les modifications apportées par cette PR. 

@@ -50,7 +50,7 @@ export default function LoginPage() {
 
               <h1 className="text-4xl font-bold mt-8 leading-tight tracking-tight">
                 Bon retour sur <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">MapleBudget</span>.
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">NexLeger</span>.
               </h1>
 
               <p className="mt-4 text-white/60 text-sm leading-relaxed max-w-sm">

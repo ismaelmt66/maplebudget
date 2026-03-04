@@ -5,13 +5,13 @@
   <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/Python-Dark.svg" width="60" alt="Python" />
   <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/TailwindCSS-Dark.svg" width="60" alt="TailwindCSS" />
   <br/>
-  <h1>🍁 MapleBudget V2</h1>
+  <h1>🍁 NexLeger V2</h1>
   <p><strong>Votre Gestionnaire Financier Intelligent & Moteur d'Analyse Heuristique</strong></p>
 </div>
 
 <br/>
 
-MapleBudget est une application full-stack ultra-performante conçue pour redéfinir la gestion de vos finances personnelles. Loin des tableurs austères, MapleBudget propose une expérience utilisateur premium (Design *Glassmorphism* & animations fluides) couplée à un véritable moteur d'intelligence analytique.
+NexLeger est une application full-stack ultra-performante conçue pour redéfinir la gestion de vos finances personnelles. Loin des tableurs austères, NexLeger propose une expérience utilisateur premium (Design *Glassmorphism* & animations fluides) couplée à un véritable moteur d'intelligence analytique.
 
 ---
 
@@ -35,7 +35,7 @@ MapleBudget est une application full-stack ultra-performante conçue pour redéf
 
 ## 🛠️ Stack Technique & Architecture
 
-MapleBudget repose sur une architecture moderne séparant clairement l'interface utilisateur propulsée par React de la logique mathématique gérée par Python.
+NexLeger repose sur une architecture moderne séparant clairement l'interface utilisateur propulsée par React de la logique mathématique gérée par Python.
 
 ### Frontend (`apps/web`)
 - **Framework :** [Next.js 14](https://nextjs.org/) (App Router, Turbopack)

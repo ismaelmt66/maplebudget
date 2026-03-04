@@ -83,8 +83,8 @@ export default function TransactionsPage(): React.JSX.Element {
   // Écouteur global pour l'ajout rapide via la HeaderBar
   useEffect(() => {
     const handleTxAdded = () => load();
-    window.addEventListener('maplebudget-tx-added', handleTxAdded);
-    return () => window.removeEventListener('maplebudget-tx-added', handleTxAdded);
+    window.addEventListener('nexleger-tx-added', handleTxAdded);
+    return () => window.removeEventListener('nexleger-tx-added', handleTxAdded);
   }, [load]);
 
   const filtered = useMemo(() => {

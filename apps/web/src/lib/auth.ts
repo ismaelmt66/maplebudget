@@ -1,7 +1,7 @@
 /**
  * Authentication utilities: token storage and retrieval.
  */
-const KEY = "maplebudget_token";
+const KEY = "nexleger_token";
 
 /**
  * Retrieve the JWT token from local storage.

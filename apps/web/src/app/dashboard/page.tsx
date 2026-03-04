@@ -582,8 +582,8 @@ export default function DashboardPage(): React.JSX.Element {
   // Ajouter un écouteur global pour que l'ajout rapide actualise le Dashboard
   useEffect(() => {
     const handleTxAdded = () => loadAll();
-    window.addEventListener('maplebudget-tx-added', handleTxAdded);
-    return () => window.removeEventListener('maplebudget-tx-added', handleTxAdded);
+    window.addEventListener('nexleger-tx-added', handleTxAdded);
+    return () => window.removeEventListener('nexleger-tx-added', handleTxAdded);
   }, [loadAll]);
 
   const filteredTxs = useMemo(() => {

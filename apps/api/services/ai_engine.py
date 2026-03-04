@@ -6,7 +6,7 @@ from models import Transaction, Category, Goal, Asset
 
 class FinancialAIEngine:
     """
-    Moteur Heuristique Avancé (God Mode) pour MapleBudget.
+    Moteur Heuristique Avancé (God Mode) pour NexLeger.
     Analyse les transactions, les objectifs et les actifs pour générer
     des réponses financières ultra-contextualisées en Markdown.
     """

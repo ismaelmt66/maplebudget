@@ -1,5 +1,5 @@
 /**
- * Core API client for MapleBudget.
+ * Core API client for NexLeger.
  * Handles authentication headers, error parsing, and type definitions.
  */
 import { getToken } from "@/lib/auth";

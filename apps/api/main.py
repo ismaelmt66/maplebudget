@@ -1,4 +1,4 @@
-"""Application FastAPI pour MapleBudget.
+"""Application FastAPI pour NexLeger.
 
 Ce module définit tous les endpoints HTTP utilisés par le front-end. La logique
 reste simple et centrée sur les opérations CRUD de base pour utilisateurs,
@@ -20,7 +20,7 @@ import models
 import schemas
 from auth import hash_password, verify_password, create_access_token, decode_token
 
-app = FastAPI(title="MapleBudget API", version="0.2.0")
+app = FastAPI(title="NexLeger API", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
