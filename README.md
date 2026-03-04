@@ -5,7 +5,7 @@
   <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/Python-Dark.svg" width="60" alt="Python" />
   <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/TailwindCSS-Dark.svg" width="60" alt="TailwindCSS" />
   <br/>
-  <h1>🍁 NexLeger V2</h1>
+  <h1>🍁 NexLeger</h1>
   <p><strong>Votre Gestionnaire Financier Intelligent & Moteur d'Analyse Heuristique</strong></p>
 </div>
 
@@ -15,7 +15,7 @@ NexLeger est une application full-stack ultra-performante conçue pour redéfini
 
 ---
 
-## ✨ Fonctionnalités Principales (V2)
+## ✨ Fonctionnalités Principales
 
 ### 🤖 Intelligence Financière "God Mode"
 - **Analyse Heuristique Locale :** Un moteur Python natif croise vos transactions, objectifs et patrimoine pour générer des conseils financiers personnalisés.
