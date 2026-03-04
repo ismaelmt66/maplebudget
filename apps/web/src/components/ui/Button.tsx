@@ -2,10 +2,19 @@
 
 import { cn } from "@/lib/cn";
 
+/**
+ * Props for the Button component.
+ * Extends standard HTML button attributes.
+ */
 type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "ghost" | "danger";
   size?: "sm" | "md" | "lg";
 };
+
+/**
+ * A reusable, styled button component consistent with the application's
+ * premium banking aesthetics.
+ */
 
 export function Button({
   className,

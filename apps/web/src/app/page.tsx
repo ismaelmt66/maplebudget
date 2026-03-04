@@ -1,454 +1,222 @@
 "use client";
 
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { ApiError, getTransactions, me, Transaction } from "@/lib/api";
-
-const LOCALE = "fr-CA";
-const CURRENCY = "CAD";
-
-function money(n: number) {
-  return new Intl.NumberFormat(LOCALE, { style: "currency", currency: CURRENCY }).format(n);
-}
-
-function ymd(d: Date) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function addDays(d: Date, days: number) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + days);
-  return x;
-}
-
-function Card({ title, desc }: { title: string; desc: string }) {
-  return (
-    <div className="mb-card-soft p-6 mb-lift">
-      <div className="text-base font-semibold">{title}</div>
-      <div className="text-sm opacity-70 mt-2">{desc}</div>
-    </div>
-  );
-}
-
-/* ===========================
-   Finance Stream (premium)
-   =========================== */
+import { me } from "@/lib/api";
 
 const FINANCE_STREAM = [
-  { kind: "rule", title: "Paye-toi d’abord", text: "Automatise une épargne le jour de paie." },
-  { kind: "tip", title: "3 postes à surveiller", text: "Logement, transport, nourriture : c’est là que ça bouge le plus." },
-  { kind: "didyouknow", title: "Budget = liberté", text: "Un budget n’est pas une restriction, c’est un plan." },
-  { kind: "reminder", title: "Fuites invisibles", text: "Les petites dépenses répétées pèsent souvent plus qu’un gros achat." },
-  { kind: "tip", title: "Net négatif", text: "Ajuste d’abord le variable avant de toucher au nécessaire." },
-  { kind: "story", title: "Rythme > magie", text: "Les vrais progrès viennent d’habitudes simples et régulières." },
-  { kind: "focus", title: "Coussin d’urgence", text: "1 mois, puis 3 mois, puis 6 mois de dépenses." },
-  { kind: "rule", title: "Crédit (idéal)", text: "Garder l’utilisation sous 30% aide la stabilité." },
+  { title: "Rythme > magie", text: "Les vrais progrès viennent d’habitudes simples et régulières." },
+  { title: "Net négatif", text: "Ajuste d’abord le variable avant de toucher au nécessaire." },
+  { title: "Budget = liberté", text: "Un budget n’est pas une restriction, c’est un plan." },
+  { title: "Coussin d’urgence", text: "1 mois, puis 3 mois, puis 6 mois de dépenses." },
 ] as const;
-
-type StreamKind = (typeof FINANCE_STREAM)[number]["kind"];
-
-function StreamIcon({ kind }: { kind: StreamKind }) {
-  const common = { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none" as const };
-  const stroke = "rgba(236,243,255,0.80)";
-
-  if (kind === "rule")
-    return (
-      <svg {...common}>
-        <path d="M7 6h10M7 12h10M7 18h6" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    );
-
-  if (kind === "tip")
-    return (
-      <svg {...common}>
-        <path
-          d="M12 3a7 7 0 0 0-4 12v2a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2a7 7 0 0 0-4-12Z"
-          stroke={stroke}
-          strokeWidth="2"
-        />
-        <path d="M9 21h6" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    );
-
-  if (kind === "didyouknow")
-    return (
-      <svg {...common}>
-        <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Z" stroke={stroke} strokeWidth="2" />
-        <path d="M12 10v6" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-        <path d="M12 7h.01" stroke={stroke} strokeWidth="3" strokeLinecap="round" />
-      </svg>
-    );
-
-  if (kind === "reminder")
-    return (
-      <svg {...common}>
-        <path d="M12 22a2 2 0 0 0 2-2H10a2 2 0 0 0 2 2Z" stroke={stroke} strokeWidth="2" />
-        <path
-          d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2Z"
-          stroke={stroke}
-          strokeWidth="2"
-        />
-      </svg>
-    );
-
-  if (kind === "story")
-    return (
-      <svg {...common}>
-        <path d="M4 6h16v12H4z" stroke={stroke} strokeWidth="2" />
-        <path d="M8 10h8M8 14h6" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    );
-
-  // focus
-  return (
-    <svg {...common}>
-      <path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      <path d="M12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4Z" stroke={stroke} strokeWidth="2" />
-    </svg>
-  );
-}
-
-function StreamChip({ kind, title, text }: { kind: StreamKind; title: string; text: string }) {
-  const palette: Record<StreamKind, { bg: string; bd: string }> = {
-    rule: { bg: "rgba(99,102,241,0.14)", bd: "rgba(99,102,241,0.22)" },
-    tip: { bg: "rgba(96,165,250,0.14)", bd: "rgba(96,165,250,0.22)" },
-    didyouknow: { bg: "rgba(34,197,94,0.12)", bd: "rgba(34,197,94,0.20)" },
-    reminder: { bg: "rgba(234,179,8,0.12)", bd: "rgba(234,179,8,0.20)" },
-    story: { bg: "rgba(255,255,255,0.10)", bd: "rgba(255,255,255,0.16)" },
-    focus: { bg: "rgba(96,165,250,0.10)", bd: "rgba(96,165,250,0.18)" },
-  };
-
-  const tag = {
-    rule: "Règle",
-    tip: "Astuce",
-    didyouknow: "Le saviez-vous",
-    reminder: "Rappel",
-    story: "Histoire",
-    focus: "Focus",
-  }[kind];
-
-  return (
-    <div
-      className="mb-marquee-item"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 10,
-        borderColor: palette[kind].bd,
-        background: palette[kind].bg,
-      }}
-    >
-      <span
-        className="mb-badge"
-        style={{
-          borderColor: palette[kind].bd,
-          background: "rgba(0,0,0,0.18)",
-          padding: "6px 10px",
-        }}
-      >
-        <StreamIcon kind={kind} />
-        {tag}
-      </span>
-
-      <span style={{ opacity: 0.95 }}>
-        <span style={{ fontWeight: 600 }}>{title} :</span>{" "}
-        <span style={{ opacity: 0.85 }}>{text}</span>
-      </span>
-    </div>
-  );
-}
-
-/* ===========================
-   Page
-   =========================== */
 
 export default function HomePage() {
   const [authed, setAuthed] = useState(false);
-  const [loadingPreview, setLoadingPreview] = useState(true);
-  const [previewErr, setPreviewErr] = useState<string | null>(null);
-  const [txs, setTxs] = useState<Transaction[]>([]);
 
-  // Load preview data (if logged in)
   useEffect(() => {
     (async () => {
       try {
-        setPreviewErr(null);
-        setLoadingPreview(true);
-
-        await me(); // if 401 -> not logged
+        await me();
         setAuthed(true);
-
-        const t = await getTransactions();
-        setTxs(t);
-      } catch (e: any) {
-        if (e instanceof ApiError && e.status === 401) {
-          setAuthed(false);
-          setTxs([]);
-        } else {
-          setPreviewErr(e?.message ?? "Erreur");
-        }
-      } finally {
-        setLoadingPreview(false);
+      } catch {
+        setAuthed(false);
       }
     })();
   }, []);
 
-  const preview = useMemo(() => {
-    // Preview = last 30 days totals
-    const today = new Date();
-    const from = ymd(addDays(today, -29));
-    const to = ymd(today);
-
-    let income = 0;
-    let expense = 0;
-
-    for (const t of txs) {
-      const date = (t as any).date as string;
-      if (date < from || date > to) continue;
-
-      const amount = Number((t as any).amount);
-      const type = (t as any).category?.type ?? "expense";
-      if (type === "income") income += amount;
-      else expense += amount;
-    }
-
-    const net = income - expense;
-    return { income, expense, net, from, to };
-  }, [txs]);
-
   return (
-    <main className="space-y-10">
-      {/* HERO */}
-      <section className="mb-card p-7 md:p-10 relative overflow-hidden">
-        <div className="flex flex-wrap gap-2">
-          <span className="mb-badge">Portfolio FinTech</span>
-          <span className="mb-badge">Stable UI</span>
-          <span className="mb-badge">Analytics</span>
-          <span className="mb-badge">Multi-utilisateurs</span>
-        </div>
+    <main className="w-full overflow-hidden pb-20">
 
-        <div className="mt-6 grid gap-8 md:grid-cols-12 md:items-center">
-          <div className="md:col-span-7 space-y-4">
-            <h1 className="text-3xl md:text-5xl font-semibold tracking-tight">
-              Multipliez vos opportunités.
+      {/* BACKGROUND GLOWS FOR HERO */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-500/20 blur-[150px] rounded-full pointer-events-none mix-blend-screen" />
+      <div className="absolute top-[20%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/20 blur-[150px] rounded-full pointer-events-none mix-blend-screen" />
+
+      {/* 1. HERO SECTION */}
+      <section className="relative pt-20 pb-32 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+
+          {/* Left Text */}
+          <div className="space-y-8 animate-fade-in-up">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm text-sm font-medium text-blue-200">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+              </span>
+              FinTech Nouvelle Génération
+            </div>
+
+            <h1 className="text-5xl lg:text-7xl font-bold tracking-tight leading-[1.1]">
+              Maîtrisez votre <br />
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
+                Avenir Financier
+              </span>
             </h1>
 
-            <p className="text-sm md:text-base opacity-70 max-w-xl">
-              MapleBudget — un pilotage financier clair : dashboard premium, transactions propres,
-              objectifs et analytics. Conçu pour une démo recruteur.
+            <p className="text-lg opacity-70 max-w-xl leading-relaxed">
+              Vos budgets, analyses, objectifs et transactions réunis dans une interface
+              minimaliste de classe mondiale. Reprenez le contrôle dès aujourd'hui sans complexité.
             </p>
 
-            <div className="flex flex-wrap gap-3 pt-2">
-              <Link className="mb-btn mb-btn-primary" href="/dashboard">
-                Ouvrir le Dashboard
+            <div className="flex flex-wrap items-center gap-4 pt-4">
+              <Link
+                href={authed ? "/dashboard" : "/register"}
+                className="px-8 py-4 rounded-xl bg-white text-black font-semibold shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_rgba(255,255,255,0.5)] transition-all transform hover:-translate-y-1"
+              >
+                {authed ? "Ouvrir l'App" : "Démarrer gratuitement"}
               </Link>
-              <Link className="mb-btn" href="/transactions">
-                Transactions
-              </Link>
-              <Link className="mb-btn" href="/login">
-                Se connecter
-              </Link>
-            </div>
-
-            <div className="text-xs opacity-60">
-              Stack : Next.js • FastAPI • SQLite (dev) • Postgres (déploiement)
-            </div>
-          </div>
-
-          {/* Right product preview */}
-          <div className="md:col-span-5">
-            <div className="mb-card-soft p-6 mb-lift">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">Aperçu produit</div>
-                <span className="mb-badge">{authed ? "Live (30j)" : "Démo"}</span>
-              </div>
-
-              <div className="mt-4 text-xs opacity-60">
-                {authed ? `Période: ${preview.from} → ${preview.to}` : "Connecte-toi pour voir tes données."}
-              </div>
-
-              {previewErr && (
-                <div className="mt-3 text-sm opacity-80">
-                  Erreur aperçu: {previewErr}
-                </div>
+              {!authed && (
+                <Link
+                  href="/login"
+                  className="px-8 py-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                >
+                  Se connecter
+                </Link>
               )}
+            </div>
 
-              <div className="mt-5 grid grid-cols-3 gap-3">
-                <div className="mb-card-soft p-4">
-                  <div className="text-xs opacity-70">Revenus</div>
-                  <div className="text-lg font-semibold mt-1" style={{ color: "rgb(var(--mb-good))" }}>
-                    {loadingPreview ? "…" : authed ? money(preview.income) : "—"}
-                  </div>
-                </div>
-                <div className="mb-card-soft p-4">
-                  <div className="text-xs opacity-70">Dépenses</div>
-                  <div className="text-lg font-semibold mt-1" style={{ color: "rgb(var(--mb-warn))" }}>
-                    {loadingPreview ? "…" : authed ? money(preview.expense) : "—"}
-                  </div>
-                </div>
-                <div className="mb-card-soft p-4">
-                  <div className="text-xs opacity-70">Net</div>
-                  <div
-                    className="text-lg font-semibold mt-1"
-                    style={{
-                      color:
-                        !authed
-                          ? "rgba(236,243,255,0.70)"
-                          : preview.net > 0
-                          ? "rgb(var(--mb-good))"
-                          : preview.net < 0
-                          ? "rgb(var(--mb-bad))"
-                          : "rgb(var(--mb-primary))",
-                    }}
-                  >
-                    {loadingPreview ? "…" : authed ? money(preview.net) : "—"}
-                  </div>
-                </div>
-              </div>
+            <div className="flex items-center gap-4 pt-6 opacity-50 text-sm">
+              <div className="w-10 h-px bg-white/30" />
+              <p>Sécurisé • Open-Source • Rapide</p>
+            </div>
+          </div>
 
-              <div className="mt-4 text-sm opacity-70">
-                Dashboard premium + graphique interactif + catégories dominantes.
+          {/* Right Floating Mockup (Pure CSS) */}
+          <div className="hidden lg:block mockup-container w-full h-full relative delay-200 animate-fade-in-up">
+            <div className="animate-float-mockup absolute inset-0 right-[-10%] top-[10%]">
+
+              {/* Fake App Glass Window */}
+              <div className="w-[110%] h-[500px] bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-border-glow">
+                {/* Fake Header */}
+                <div className="h-12 border-b border-white/10 flex items-center px-4 gap-2 bg-white/[0.02]">
+                  <div className="flex gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-red-400/80" />
+                    <div className="w-3 h-3 rounded-full bg-yellow-400/80" />
+                    <div className="w-3 h-3 rounded-full bg-green-400/80" />
+                  </div>
+                  <div className="ml-auto flex gap-4 text-[10px] font-semibold tracking-wider text-white/40">
+                    <div>ANALYTIQUE</div>
+                    <div>TRANSACTIONS</div>
+                  </div>
+                </div>
+
+                {/* Fake Body */}
+                <div className="p-6 flex-1 flex flex-col gap-6 relative overflow-hidden">
+                  {/* Background grid */}
+                  <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:20px_20px]" />
+
+                  {/* KPI Row */}
+                  <div className="grid grid-cols-2 gap-4 relative z-10">
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                      <div className="text-xs text-white/50 mb-1">Revenus d'Avril</div>
+                      <div className="text-2xl font-bold text-green-400">+ 4 250 $</div>
+                    </div>
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                      <div className="text-xs text-white/50 mb-1">Dépenses d'Avril</div>
+                      <div className="text-2xl font-bold text-red-400">- 1 120 $</div>
+                    </div>
+                  </div>
+
+                  {/* Graph Row */}
+                  <div className="flex-1 bg-white/5 border border-white/10 rounded-xl p-4 relative z-10 flex items-end gap-3 justify-center">
+                    {[40, 70, 45, 90, 60, 100, 30].map((h, i) => (
+                      <div key={i} className="w-8 rounded-t-sm" style={{ height: `${h}%`, background: h > 80 ? 'rgba(99,102,241,0.8)' : 'rgba(96,165,250,0.5)' }} />
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+
         </div>
       </section>
 
-      {/* FINANCE STREAM (premium chips + icons) */}
-      <section className="mb-card-soft p-6">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <div className="text-base font-semibold">Finance Stream</div>
-            <div className="text-sm opacity-70 mt-1">
-              Conseils courts, propres et utiles. Survole pour pause.
-            </div>
-          </div>
-          <span className="mb-badge">Conseils • Règles • Faits</span>
+      {/* 2. BENTO FEATURES GRID */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative">
+        <div className="text-center mb-16 animate-fade-in-up delay-100">
+          <h2 className="text-3xl md:text-4xl font-bold">Un écosystème taillé pour la <span className="text-blue-400">performance</span>.</h2>
+          <p className="mt-4 opacity-70 max-w-2xl mx-auto">Chaque pixel a été pensé pour vous faire gagner du temps et vous offrir une visibilité instantanée sur l'état de vos finances.</p>
         </div>
 
-        <div className="mt-4 mb-marquee">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px]">
+
+          {/* Bento 1: Large Analytical */}
+          <div className="md:col-span-2 group relative rounded-3xl overflow-hidden bg-black/40 border border-white/5 hover:border-white/10 transition-colors animate-fade-in-up delay-200">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent z-10" />
+
+            {/* Fake Mockup element */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-full flex items-end gap-2 justify-center opacity-30 group-hover:opacity-60 transition-opacity duration-1000 blur-[2px] group-hover:blur-0">
+              {[20, 40, 30, 80, 60, 100].map((h, i) => <div key={i} className="w-16 rounded-t shadow-[0_0_30px_rgba(96,165,250,0.5)] bg-blue-500" style={{ height: `${h}%` }} />)}
+            </div>
+
+            <div className="relative z-20 p-8 h-full flex flex-col justify-end">
+              <h3 className="text-2xl font-bold mb-2">Analytique Poussée</h3>
+              <p className="opacity-70 max-w-md">Graphiques dynamiques, tendances mensuelles et visualisation instantanée de votre équilibre Revenus/Dépenses.</p>
+            </div>
+          </div>
+
+          {/* Bento 2: Quick Add */}
+          <div className="group relative rounded-3xl overflow-hidden bg-black/40 border border-white/5 hover:border-white/10 transition-colors animate-fade-in-up delay-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute right-[-20%] top-[-20%] w-48 h-48 bg-purple-500/20 blur-[60px] rounded-full group-hover:bg-purple-500/30 transition-colors" />
+
+            <div className="relative p-8 h-full flex flex-col">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center mb-auto">
+                <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Ajout Éclair</h3>
+              <p className="opacity-70 text-sm">Raccourci global pour enregistrer une transaction en moins de 3 secondes d'où que vous soyez.</p>
+            </div>
+          </div>
+
+          {/* Bento 3: Budgets */}
+          <div className="group relative rounded-3xl overflow-hidden bg-black/40 border border-white/5 hover:border-white/10 transition-colors animate-fade-in-up delay-400">
+            <div className="absolute inset-0 bg-gradient-to-tr from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+            {/* Fake Progress */}
+            <div className="absolute -bottom-4 right-4 w-3/4 bg-white/5 rounded-full h-3 border border-white/10 overflow-hidden shadow-2xl">
+              <div className="h-full bg-gradient-to-r from-green-400 to-green-300 w-[65%]" />
+            </div>
+
+            <div className="relative p-8 h-full flex flex-col">
+              <h3 className="text-xl font-bold mb-2">Budgets Stricts</h3>
+              <p className="opacity-70 text-sm">Allouez des limites par catégorie et suivez en temps réel la barre visuelle de consommation. Fini les mauvaises surprises.</p>
+            </div>
+          </div>
+
+          {/* Bento 4: Secure Base */}
+          <div className="md:col-span-2 group relative rounded-3xl overflow-hidden bg-black/40 border border-white/5 hover:border-white/10 transition-colors animate-fade-in-up delay-500">
+            <div className="absolute inset-0 bg-gradient-to-tl from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+            <div className="absolute inset-0 flex items-center justify-center opacity-10 group-hover:opacity-20 transition-opacity duration-700">
+              <svg className="w-64 h-64 text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z" /></svg>
+            </div>
+
+            <div className="relative z-20 p-8 h-full flex flex-col justify-center">
+              <h3 className="text-2xl font-bold mb-2">Sécurité Bancaire (JWT)</h3>
+              <p className="opacity-70 max-w-md">L'architecture repose sur FastAPI avec authentification robuste par token JWT et bases de données isolées.</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 3. FINANCE MARQUEE STREAM */}
+      <section className="mt-10 overflow-hidden py-10 border-y border-white/5 bg-white/[0.01]">
+        <div className="mb-marquee">
           <div className="mb-marquee-track">
-            {[...FINANCE_STREAM, ...FINANCE_STREAM].map((x, idx) => (
-              <StreamChip key={idx} kind={x.kind} title={x.title} text={x.text} />
+            {[...FINANCE_STREAM, ...FINANCE_STREAM, ...FINANCE_STREAM].map((x, idx) => (
+              <div key={idx} className="inline-flex items-center gap-4 mx-8">
+                <div className="w-2 h-2 rounded-full bg-blue-400" />
+                <span className="font-semibold">{x.title} :</span>
+                <span className="opacity-60">{x.text}</span>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* FEATURES */}
-      <section className="grid gap-4 md:grid-cols-3">
-        <Card title="Dashboard premium" desc="KPIs clairs, trend interactif (hover), catégories dominantes, insights." />
-        <Card title="Transactions propres" desc="Ajout rapide, historique lisible, filtres/tri, UX stable." />
-        <Card title="Objectifs" desc="Plan mensuel, dépôts, suivi de progression — logique “banque”." />
-      </section>
-
-      {/* Démarrage rapide */}
-      <section className="mb-card p-7 md:p-10 mb-lift">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <div className="text-2xl font-semibold">Démarrage rapide</div>
-            <div className="text-sm opacity-70 mt-2 max-w-2xl">
-              Un espace clair pour avancer sans se perdre : configure, enregistre, puis analyse.
-            </div>
-          </div>
-          <span className="mb-badge">Prochaines actions</span>
-        </div>
-
-        <div className="mt-7 grid gap-4 lg:grid-cols-12">
-          {/* Steps */}
-          <div className="lg:col-span-8 grid gap-4 md:grid-cols-3">
-            <div className="mb-card-soft p-6 mb-lift">
-              <div className="text-sm opacity-70">Étape 1</div>
-              <div className="text-base font-semibold mt-1">Créer des catégories</div>
-              <div className="text-sm opacity-70 mt-2">
-                Exemple : Salaire, Loyer, Courses, Transport, Abonnements.
-              </div>
-              <div className="mt-4">
-                <Link className="mb-btn mb-btn-primary" href="/transactions">
-                  Ouvrir Transactions
-                </Link>
-              </div>
-            </div>
-
-            <div className="mb-card-soft p-6 mb-lift">
-              <div className="text-sm opacity-70">Étape 2</div>
-              <div className="text-base font-semibold mt-1">Ajouter des transactions</div>
-              <div className="text-sm opacity-70 mt-2">
-                5–10 lignes suffisent pour voir une tendance fiable.
-              </div>
-              <div className="mt-4 flex gap-2 flex-wrap">
-                <Link className="mb-btn mb-btn-primary" href="/transactions">
-                  Ajouter
-                </Link>
-                <Link className="mb-btn" href="/dashboard">
-                  Voir l’impact
-                </Link>
-              </div>
-            </div>
-
-            <div className="mb-card-soft p-6 mb-lift">
-              <div className="text-sm opacity-70">Étape 3</div>
-              <div className="text-base font-semibold mt-1">Fixer un objectif</div>
-              <div className="text-sm opacity-70 mt-2">
-                Plan mensuel automatique + dépôts : simple et motivant.
-              </div>
-              <div className="mt-4">
-                <Link className="mb-btn mb-btn-primary" href="/goals">
-                  Ouvrir Goals
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          {/* Checklist */}
-          <div className="lg:col-span-4">
-            <div className="mb-card-soft p-6 mb-lift">
-              <div className="text-base font-semibold">Checklist</div>
-              <div className="text-sm opacity-70 mt-2">
-                Une mini routine qui donne des résultats vite.
-              </div>
-
-              <ul className="mt-4 space-y-3 text-sm">
-                <li className="flex gap-2">
-                  <span className="opacity-80">✓</span>
-                  <span className="opacity-80">Ajouter 4 catégories (2 revenus + 2 dépenses)</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="opacity-80">✓</span>
-                  <span className="opacity-80">Entrer 5 transactions sur 7 jours</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="opacity-80">✓</span>
-                  <span className="opacity-80">Vérifier le signal et les catégories dominantes</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="opacity-80">✓</span>
-                  <span className="opacity-80">Créer un objectif + déposer une fois</span>
-                </li>
-              </ul>
-
-              <div className="mt-5 text-xs opacity-60">
-                Note : en dev, les données sont locales (SQLite). En déploiement : Postgres.
-              </div>
-
-              <div className="mt-5 flex gap-2 flex-wrap">
-                <Link className="mb-btn" href="/dashboard">
-                  Dashboard
-                </Link>
-                <Link className="mb-btn" href="/transactions">
-                  Transactions
-                </Link>
-                <Link className="mb-btn" href="/goals">
-                  Goals
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
     </main>
   );
 }

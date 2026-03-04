@@ -1,8 +1,12 @@
-// apps/web/src/lib/api.ts
+/**
+ * Core API client for MapleBudget.
+ * Handles authentication headers, error parsing, and type definitions.
+ */
 import { getToken } from "@/lib/auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
 
+/** Custom error class representing an HTTP error from the API */
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -11,7 +15,11 @@ export class ApiError extends Error {
   }
 }
 
-async function apiFetch(path: string, init: RequestInit = {}) {
+/**
+ * Internal fetch wrapper that automatically attaches the bearer token
+ * and handles JSON parsing. Throws `ApiError` on non-2xx responses.
+ */
+export async function apiFetch(path: string, init: RequestInit = {}) {
   const token = getToken();
   const headers = new Headers(init.headers);
 
@@ -49,7 +57,7 @@ async function apiFetch(path: string, init: RequestInit = {}) {
 /* ---------- Types ---------- */
 export type User = { id: number; email: string };
 
-export type Category = { id: number; name: string; type: string };
+export type Category = { id: number; name: string; type: string; budget_limit?: number | null; };
 
 export type Transaction = {
   id: number;
@@ -106,8 +114,19 @@ export async function getCategories(): Promise<Category[]> {
   return apiFetch("/categories") as Promise<Category[]>;
 }
 
-export async function createCategory(payload: { name: string; type: string }): Promise<Category> {
+export async function createCategory(payload: { name: string; type: string; budget_limit?: number | null }): Promise<Category> {
   return apiFetch("/categories", { method: "POST", body: JSON.stringify(payload) }) as Promise<Category>;
+}
+
+export async function updateCategory(
+  id: number,
+  payload: { name?: string; type?: string; budget_limit?: number | null }
+): Promise<Category> {
+  return apiFetch(`/categories/${id}`, { method: "PUT", body: JSON.stringify(payload) }) as Promise<Category>;
+}
+
+export async function deleteCategory(id: number): Promise<{ deleted: boolean; id: number }> {
+  return apiFetch(`/categories/${id}`, { method: "DELETE" }) as Promise<{ deleted: boolean; id: number }>;
 }
 
 /* ---------- Transactions ---------- */
@@ -143,6 +162,20 @@ export async function getDashboard(params?: { from_date?: string; to_date?: stri
 
   const url = `/dashboard${qs.toString() ? `?${qs.toString()}` : ""}`;
   return apiFetch(url) as Promise<Dashboard>;
+}
+
+export type Subscription = {
+  name: string;
+  monthly_cost: number;
+  yearly_projection: number;
+  status: string;
+  has_price_hike: boolean;
+  category_name: string;
+  last_date: string;
+};
+
+export async function getSubscriptions(): Promise<Subscription[]> {
+  return apiFetch("/analytics/subscriptions") as Promise<Subscription[]>;
 }
 
 export type Goal = {
@@ -188,4 +221,69 @@ export async function updateGoal(
 
 export async function deleteGoal(goalId: number): Promise<{ deleted: boolean; id: number }> {
   return apiFetch(`/goals/${goalId}`, { method: "DELETE" }) as Promise<{ deleted: boolean; id: number }>;
+}
+
+/* ---------- Assets (Patrimoine) ---------- */
+
+export type AssetHistory = {
+  id: number;
+  asset_id: number;
+  date: string;
+  balance: number;
+}
+
+export type Asset = {
+  id: number;
+  name: string;
+  type: string;
+  balance: number;
+  history: AssetHistory[];
+};
+
+export async function getAssets(): Promise<Asset[]> {
+  return apiFetch("/assets") as Promise<Asset[]>;
+}
+
+export async function createAsset(payload: {
+  name: string;
+  type: string;
+  balance: number;
+}): Promise<Asset> {
+  return apiFetch("/assets", { method: "POST", body: JSON.stringify(payload) }) as Promise<Asset>;
+}
+
+export async function updateAsset(
+  id: number,
+  payload: { name?: string; type?: string; balance?: number }
+): Promise<Asset> {
+  return apiFetch(`/assets/${id}`, { method: "PUT", body: JSON.stringify(payload) }) as Promise<Asset>;
+}
+
+export async function deleteAsset(id: number): Promise<{ deleted: boolean; id: number }> {
+  return apiFetch(`/assets/${id}`, { method: "DELETE" }) as Promise<{ deleted: boolean; id: number }>;
+}
+
+/* ---------- Gamification / Achievements ---------- */
+
+export type Achievement = {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  is_unlocked: boolean;
+  progress: number;
+  unlock_date?: string;
+};
+
+export async function getAchievements(): Promise<Achievement[]> {
+  return apiFetch("/achievements") as Promise<Achievement[]>;
+}
+
+/* ---------- AI Coach ---------- */
+
+export async function sendChatMessage(message: string): Promise<{ reply: string }> {
+  return apiFetch("/ai/chat", {
+    method: "POST",
+    body: JSON.stringify({ message }),
+  }) as Promise<{ reply: string }>;
 }
