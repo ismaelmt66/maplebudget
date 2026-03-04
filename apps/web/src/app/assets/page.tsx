@@ -15,6 +15,7 @@ import { money } from "@/lib/format";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { ResponsiveContainer, AreaChart, XAxis, YAxis, Tooltip, Area, CartesianGrid } from "recharts";
 
 // ─── Mini Sparkline Component ───────────────────────────────────────────────
 function Sparkline({ history, positive }: { history: { date: string; balance: number }[]; positive: boolean }) {
@@ -37,24 +38,151 @@ function Sparkline({ history, positive }: { history: { date: string; balance: nu
     );
 }
 
-// ─── Markdown Renderer (reused from coach) ───────────────────────────────────
+// ─── Markdown Renderer ───────────────────────────────────────────────────────
 function RichMarkdown({ text }: { text: string }) {
     const lines = text.split("\n");
+
+    interface LineBlock { kind: "line"; content: string }
+    interface TableBlock { kind: "table"; rows: string[][] }
+    type Block = LineBlock | TableBlock;
+
+    const blocks: Block[] = [];
+    let i = 0;
+    while (i < lines.length) {
+        if (lines[i].startsWith("|")) {
+            const tableLines: string[] = [];
+            while (i < lines.length && lines[i].startsWith("|")) { tableLines.push(lines[i]); i++; }
+            const isSep = (l: string) => l.split("|").slice(1, -1).every(c => /^[\s\-:]+$/.test(c));
+            const rows = tableLines
+                .filter(l => !isSep(l))
+                .map(l => l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => c.trim()));
+            if (rows.length > 0) blocks.push({ kind: "table", rows });
+        } else {
+            blocks.push({ kind: "line", content: lines[i] });
+            i++;
+        }
+    }
+
+    const bold = (s: string) => s.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>');
+
+    const renderLine = (line: string, key: number) => {
+        if (line.startsWith("## ")) return <h2 key={key} className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-300 to-teal-200 mt-4 mb-2">{line.slice(3)}</h2>;
+        if (line.startsWith("### ")) return <h3 key={key} className="text-base font-semibold text-white/90 mt-3 mb-1">{line.slice(4)}</h3>;
+        if (line.startsWith("> [!TIP]")) return <div key={key} className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-2 text-emerald-300 text-xs font-medium mt-2">💡 Conseil</div>;
+        if (line.startsWith("> [!NOTE]")) return <div key={key} className="bg-blue-500/10 border border-blue-500/30 rounded-xl px-4 py-2 text-blue-300 text-xs font-medium mt-2">📝 Note</div>;
+        if (line.startsWith("> [!WARNING]")) return <div key={key} className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-2 text-yellow-300 text-xs font-medium mt-2">⚠️ Attention</div>;
+        if (line.startsWith("> ")) return <p key={key} className="opacity-80 pl-3 border-l-2 border-white/20 italic text-xs">{line.slice(2)}</p>;
+        if (line.startsWith("- ")) return <li key={key} className="ml-4 list-disc leading-relaxed" dangerouslySetInnerHTML={{ __html: bold(line.slice(2)) }} />;
+        if (line.startsWith("---")) return <hr key={key} className="border-white/10 my-3" />;
+        return line.trim() ? <p key={key} dangerouslySetInnerHTML={{ __html: bold(line) }} /> : <div key={key} className="h-1" />;
+    };
+
     return (
         <div className="text-sm text-white/80 space-y-1 leading-relaxed">
-            {lines.map((line, i) => {
-                if (line.startsWith("## ")) return <h2 key={i} className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-300 to-teal-200 mt-4 mb-2">{line.slice(3)}</h2>;
-                if (line.startsWith("### ")) return <h3 key={i} className="text-base font-semibold text-white/90 mt-3">{line.slice(4)}</h3>;
-                if (line.startsWith("> [!TIP]")) return <div key={i} className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-2 text-emerald-300 text-xs font-medium mt-2">💡 Conseil</div>;
-                if (line.startsWith("> [!NOTE]")) return <div key={i} className="bg-blue-500/10 border border-blue-500/30 rounded-xl px-4 py-2 text-blue-300 text-xs font-medium mt-2">📝 Note</div>;
-                if (line.startsWith("> [!WARNING]")) return <div key={i} className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-2 text-yellow-300 text-xs font-medium mt-2">⚠ Attention</div>;
-                if (line.startsWith("> ")) return <p key={i} className="opacity-80 pl-3 border-l-2 border-white/20 italic text-xs">{line.slice(2)}</p>;
-                if (line.startsWith("- ")) return <li key={i} className="ml-4 list-disc leading-relaxed" dangerouslySetInnerHTML={{ __html: line.slice(2).replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>') }} />;
-                if (line.startsWith("|")) return <p key={i} className="font-mono text-xs opacity-60">{line}</p>;
-                if (line.startsWith("---")) return <hr key={i} className="border-white/10 my-3" />;
-                const html = line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>');
-                return line.trim() ? <p key={i} dangerouslySetInnerHTML={{ __html: html }} /> : <div key={i} className="h-1" />;
+            {blocks.map((block, idx) => {
+                if (block.kind === "table") {
+                    return (
+                        <div key={idx} className="overflow-x-auto my-3 rounded-xl border border-white/10">
+                            <table className="w-full text-xs border-collapse">
+                                <thead>
+                                    <tr className="border-b border-white/10">
+                                        {block.rows[0]?.map((cell, j) => (
+                                            <th key={j} className="text-left px-3 py-2 text-white/70 font-semibold bg-white/5 whitespace-nowrap"
+                                                dangerouslySetInnerHTML={{ __html: bold(cell) }} />
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {block.rows.slice(1).map((row, ri) => (
+                                        <tr key={ri} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                            {row.map((cell, ci) => (
+                                                <td key={ci} className="px-3 py-2 text-white/70 whitespace-nowrap"
+                                                    dangerouslySetInnerHTML={{ __html: bold(cell) }} />
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    );
+                }
+                return renderLine(block.content, idx);
             })}
+        </div>
+    );
+}
+
+// ─── Interactive Wealth Chart ─────────────────────────────────────────────────
+function InteractiveWealthChart({ data }: { data: { date: string; value: number }[] }) {
+    const [range, setRange] = useState<"all" | "6m" | "1y" | "3y">("all");
+
+    const filtered = useMemo(() => {
+        if (range === "all" || data.length === 0) return data;
+        const now = new Date();
+        const months = range === "6m" ? 6 : range === "1y" ? 12 : 36;
+        const cutoff = new Date(now.getFullYear(), now.getMonth() - months, now.getDate());
+        const cutoffStr = cutoff.toISOString().slice(0, 10);
+        const result = data.filter(d => d.date >= cutoffStr);
+        return result.length >= 2 ? result : data;
+    }, [data, range]);
+
+    const isPositive = filtered.length >= 2 ? filtered[filtered.length - 1].value >= filtered[0].value : true;
+    const color = isPositive ? "#34d399" : "#f87171";
+    const gradId = isPositive ? "wgPos" : "wgNeg";
+
+    const fmtTick = (d: string) => {
+        try { return new Date(d + "T00:00:00").toLocaleDateString("fr-FR", { month: "short", year: "2-digit" }); }
+        catch { return d; }
+    };
+    const fmtLabel = (d: any) => {
+        if (!d) return "";
+        try { return new Date(d + "T00:00:00").toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }); }
+        catch { return String(d); }
+    };
+    const fmtY = (v: number) => {
+        if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+        if (Math.abs(v) >= 1_000) return `${(v / 1_000).toFixed(0)}k`;
+        return v.toFixed(0);
+    };
+
+    return (
+        <div>
+            <div className="flex justify-end gap-1 mb-4">
+                {(["all", "3y", "1y", "6m"] as const).map(r => (
+                    <button key={r} onClick={() => setRange(r)}
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${range === r ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-white/40 hover:text-white/70"}`}>
+                        {r === "all" ? "Tout" : r === "3y" ? "3A" : r === "1y" ? "1A" : "6M"}
+                    </button>
+                ))}
+            </div>
+            <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={filtered} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
+                    <defs>
+                        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={color} stopOpacity={0.25} />
+                            <stop offset="95%" stopColor={color} stopOpacity={0} />
+                        </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                    <XAxis dataKey="date" tickFormatter={fmtTick}
+                        tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }}
+                        axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} minTickGap={50} />
+                    <YAxis tickFormatter={fmtY}
+                        tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }}
+                        axisLine={false} tickLine={false} width={52} />
+                    <Tooltip
+                        contentStyle={{ backgroundColor: "rgba(8,8,18,0.95)", border: `1px solid ${color}44`, borderRadius: "12px", padding: "8px 14px" }}
+                        labelStyle={{ color: "rgba(255,255,255,0.45)", fontSize: "11px", marginBottom: "4px" }}
+                        itemStyle={{ color, fontWeight: "bold", fontSize: "14px" }}
+                        formatter={(v) => [money(v as number), "Patrimoine Net"]}
+                        labelFormatter={fmtLabel}
+                        cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: "4 4" }}
+                    />
+                    <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2.5}
+                        fill={`url(#${gradId})`} dot={false}
+                        activeDot={{ r: 5, fill: color, stroke: "rgba(255,255,255,0.8)", strokeWidth: 2 }} />
+                </AreaChart>
+            </ResponsiveContainer>
         </div>
     );
 }
@@ -140,23 +268,6 @@ export default function AssetsPage() {
             return { date, value: Object.values(currentBalances).reduce((s, v) => s + v, 0) };
         });
     }, [assets]);
-
-    const wealthPath = useMemo(() => {
-        if (wealthCurve.length < 2) return { line: "", area: "" };
-        const W = 1000, H = 200;
-        const vals = wealthCurve.map(d => d.value);
-        const min = Math.min(...vals);
-        const max = Math.max(...vals);
-        const range = max - min || 1;
-        const pts = vals.map((v, i) => ({ x: (i / (vals.length - 1)) * W, y: H - ((v - min) / range) * H }));
-        const line = pts.reduce((acc, p, i, a) => {
-            if (i === 0) return `M ${p.x},${p.y}`;
-            const cp1x = a[i - 1].x + (p.x - a[i - 1].x) / 2;
-            return `${acc} C ${cp1x},${a[i - 1].y} ${cp1x},${p.y} ${p.x},${p.y}`;
-        }, "");
-        const area = `${line} L ${pts[pts.length - 1].x},${H} L 0,${H} Z`;
-        return { line, area };
-    }, [wealthCurve]);
 
     // ─── Asset Save ───────────────────────────────────────────────────────────
     const handleAssetSave = async (e: React.FormEvent) => {
@@ -270,26 +381,11 @@ export default function AssetsPage() {
             {/* ── Wealth Curve ─────────────────────────────── */}
             {wealthCurve.length >= 2 && (
                 <section className="rounded-3xl bg-black/40 border border-white/10 p-6 md:p-8 backdrop-blur-xl animate-fade-in-up delay-150">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex justify-between items-center mb-2">
                         <h2 className="text-lg font-bold">Évolution du Patrimoine</h2>
-                        <div className="text-xs text-white/40 font-mono">{wealthCurve[0]?.date} → {wealthCurve[wealthCurve.length - 1]?.date}</div>
+                        <div className="text-xs text-white/40 font-mono">{wealthCurve.length} points</div>
                     </div>
-                    <div className="h-[200px] w-full">
-                        <svg viewBox="0 0 1000 200" className="w-full h-full" preserveAspectRatio="none">
-                            <defs>
-                                <linearGradient id="wgr" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="rgba(52,211,153,0.35)" />
-                                    <stop offset="100%" stopColor="rgba(52,211,153,0)" />
-                                </linearGradient>
-                                <filter id="glow2">
-                                    <feGaussianBlur stdDeviation="4" result="blur" />
-                                    <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                                </filter>
-                            </defs>
-                            <path d={wealthPath.area} fill="url(#wgr)" />
-                            <path d={wealthPath.line} fill="none" stroke="#34d399" strokeWidth="3" filter="url(#glow2)" strokeLinecap="round" />
-                        </svg>
-                    </div>
+                    <InteractiveWealthChart data={wealthCurve} />
                 </section>
             )}
 
@@ -338,8 +434,11 @@ export default function AssetsPage() {
                                         <div className="flex justify-between items-start mb-4">
                                             <div className="text-xs font-bold uppercase tracking-widest opacity-70">{typeLabel[a.type] || a.type}</div>
                                             <button
+                                                type="button"
+                                                title="Supprimer cet actif"
                                                 onClick={e => { e.stopPropagation(); handleDelete(a.id); }}
                                                 className="opacity-0 group-hover:opacity-100 p-1.5 rounded-full hover:bg-red-500/20 text-red-400 transition-all"
+                                                aria-label="Supprimer cet actif"
                                             >
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
                                             </button>
@@ -552,7 +651,7 @@ export default function AssetsPage() {
                         <Input value={assetForm.name} onChange={e => setAssetForm(p => ({ ...p, name: e.target.value }))} required placeholder="Ex: Livret A" />
                     </div>
                     <div><label className="text-sm text-white/60 mb-1 block">Type</label>
-                        <select className="w-full rounded-xl bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all" value={assetForm.type} onChange={e => setAssetForm(p => ({ ...p, type: e.target.value }))}>
+                        <select className="w-full rounded-xl bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all" value={assetForm.type} onChange={e => setAssetForm(p => ({ ...p, type: e.target.value }))} aria-label="Type d'actif">
                             <option value="checking">Compte Courant</option>
                             <option value="savings">Épargne</option>
                             <option value="stock">Bourse / Placements</option>
@@ -578,21 +677,21 @@ export default function AssetsPage() {
                         <Input value={ruleForm.name} onChange={e => setRuleForm(p => ({ ...p, name: e.target.value }))} required placeholder="Ex: Épargne mensuelle automatique" />
                     </div>
                     <div><label className="text-sm text-white/60 mb-1 block">Source de revenus</label>
-                        <select className="w-full rounded-xl bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all" value={ruleForm.source_type} onChange={e => setRuleForm(p => ({ ...p, source_type: e.target.value }))}>
+                        <select className="w-full rounded-xl bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all" value={ruleForm.source_type} onChange={e => setRuleForm(p => ({ ...p, source_type: e.target.value }))} aria-label="Source de revenus">
                             <option value="all_income">Tous les revenus</option>
                             <option value="category">Catégorie spécifique</option>
                         </select>
                     </div>
                     {ruleForm.source_type === "category" && (
                         <div><label className="text-sm text-white/60 mb-1 block">Catégorie source</label>
-                            <select className="w-full rounded-xl bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all" value={ruleForm.source_category_id} onChange={e => setRuleForm(p => ({ ...p, source_category_id: e.target.value }))} required>
+                            <select className="w-full rounded-xl bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all" value={ruleForm.source_category_id} onChange={e => setRuleForm(p => ({ ...p, source_category_id: e.target.value }))} required aria-label="Catégorie source">
                                 <option value="">-- Choisir --</option>
                                 {incomeCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         </div>
                     )}
                     <div><label className="text-sm text-white/60 mb-1 block">Actif cible</label>
-                        <select className="w-full rounded-xl bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all" value={ruleForm.target_asset_id} onChange={e => setRuleForm(p => ({ ...p, target_asset_id: e.target.value }))} required>
+                        <select className="w-full rounded-xl bg-white/5 border border-white/10 text-white px-4 py-3 focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all" value={ruleForm.target_asset_id} onChange={e => setRuleForm(p => ({ ...p, target_asset_id: e.target.value }))} required aria-label="Actif cible">
                             <option value="">-- Choisir un actif --</option>
                             {assets.filter(a => a.type !== "liability").map(a => <option key={a.id} value={a.id}>{a.name} ({money(a.balance)})</option>)}
                         </select>

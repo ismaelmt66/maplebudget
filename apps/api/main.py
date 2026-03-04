@@ -5,6 +5,9 @@ reste simple et centrée sur les opérations CRUD de base pour utilisateurs,
 catégories, transactions, objectifs et le tableau de bord.
 """
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm

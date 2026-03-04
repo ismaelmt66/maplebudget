@@ -134,6 +134,8 @@ export default function CategoriesPage() {
                                             <td className="px-5 py-4">
                                                 {isEditing ? (
                                                     <select
+                                                        title="Type de catégorie"
+                                                        aria-label="Type de catégorie"
                                                         value={editType}
                                                         onChange={(e) => setEditType(e.target.value)}
                                                         className="bg-black/60 border border-white/20 focus:border-blue-500/50 rounded-lg px-3 py-2 text-sm outline-none w-32"
@@ -158,6 +160,8 @@ export default function CategoriesPage() {
                                                 {isEditing ? (
                                                     <input
                                                         autoFocus
+                                                        title="Nom de la catégorie"
+                                                        placeholder="Nom de la catégorie"
                                                         value={editName}
                                                         onChange={(e) => setEditName(e.target.value)}
                                                         className="bg-black/60 border border-white/20 focus:border-blue-500/50 rounded-lg px-3 py-2 text-sm outline-none w-full"
