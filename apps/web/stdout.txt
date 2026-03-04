@@ -2,35 +2,13 @@
 > nexleger-web@2.0.0 dev
 > next dev
 
+⚠ Port 3000 is in use by process 37696, using available port 3001 instead.
 ▲ Next.js 16.1.6 (Turbopack)
-- Local:         http://localhost:3000
-- Network:       http://132.213.176.116:3000
+- Local:         http://localhost:3001
+- Network:       http://132.213.176.116:3001
 - Environments: .env.local
 
 ✓ Starting...
-✓ Ready in 4.2s
-○ Compiling / ...
- GET / 200 in 8.9s (compile: 8.2s, render: 738ms)
- GET /login 200 in 1278ms (compile: 1110ms, render: 168ms)
- GET /login 200 in 1158ms (compile: 458ms, render: 700ms)
- GET /dashboard 200 in 1053ms (compile: 947ms, render: 106ms)
- GET / 200 in 175ms (compile: 67ms, render: 107ms)
- GET /login 200 in 310ms (compile: 20ms, render: 289ms)
- GET /dashboard 200 in 77ms (compile: 16ms, render: 61ms)
- GET /login 200 in 130ms (compile: 16ms, render: 114ms)
- GET / 200 in 214ms (compile: 31ms, render: 183ms)
- GET /login 200 in 163ms (compile: 17ms, render: 146ms)
- GET /dashboard 200 in 1122ms (compile: 429ms, render: 693ms)
- GET /dashboard 200 in 745ms (compile: 22ms, render: 723ms)
- GET /assets 200 in 2.9s (compile: 2.8s, render: 109ms)
- GET /coach 200 in 316ms (compile: 236ms, render: 80ms)
- GET /assets 200 in 408ms (compile: 164ms, render: 245ms)
- GET /dashboard 200 in 224ms (compile: 65ms, render: 159ms)
- GET /transactions 200 in 1756ms (compile: 1454ms, render: 302ms)
- GET /coach 200 in 90ms (compile: 23ms, render: 66ms)
- GET /dashboard 200 in 840ms (compile: 307ms, render: 533ms)
- GET /coach 200 in 133ms (compile: 41ms, render: 92ms)
- GET /coach 200 in 479ms (compile: 21ms, render: 458ms)
- GET /assets 200 in 93ms (compile: 28ms, render: 65ms)
- GET /coach 200 in 247ms (compile: 95ms, render: 152ms)
- GET /coach 200 in 1471ms (compile: 226ms, render: 1245ms)
+⨯ Unable to acquire lock at C:\Users\takou\Documents\maplebudget\apps\web\.next\dev\lock, is another instance of next dev running?
+  Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+[?25h

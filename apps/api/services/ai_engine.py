@@ -1,9 +1,12 @@
 """
 God Mode AI Coach for MapleBudget.
 
-process_query() uses the Anthropic Claude API with a rich financial context
-injected as system prompt so it can answer ANY question in French.
-All other methods (analyze_patrimoine, reports) remain as heuristic fallbacks.
+process_query() uses an LLM (Groq by default, Anthropic as fallback) with a rich
+financial context injected as system prompt — answers ANY question in French.
+
+Set ONE of these env vars in apps/api/.env:
+  GROQ_API_KEY=gsk_...        (free at console.groq.com)
+  ANTHROPIC_API_KEY=sk-ant-... (paid, console.anthropic.com)
 """
 
 import math
@@ -16,6 +19,12 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from models import Transaction, Category, Goal, Asset
+
+try:
+    from groq import Groq as _GroqClient
+    _GROQ_AVAILABLE = True
+except ImportError:
+    _GROQ_AVAILABLE = False
 
 try:
     import anthropic as _anthropic_lib
@@ -824,22 +833,9 @@ class FinancialAIEngine:
 
     # ─── Main Dispatch (LLM-powered) ──────────────────────────────────────────
 
-    def process_query(self, message: str) -> str:
-        """
-        Main entry point.
-        Uses Claude API with full financial context injected as system prompt.
-        Falls back to heuristic reports if API key is missing.
-        """
-        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-
-        if not _ANTHROPIC_AVAILABLE or not api_key:
-            # Graceful fallback to heuristic engine
-            return self._heuristic_dispatch(message)
-
-        try:
-            financial_context = self._build_financial_context()
-
-            system_prompt = f"""Tu es un coach financier personnel expert, intégré dans l'application MapleBudget.
+    def _build_system_prompt(self) -> str:
+        financial_context = self._build_financial_context()
+        return f"""Tu es un coach financier personnel expert, intégré dans l'application MapleBudget.
 Tu as accès aux données financières réelles de l'utilisateur ci-dessous.
 Tu réponds TOUJOURS en français, de façon claire, précise et personnalisée.
 Tu utilises du Markdown (gras, listes, tableaux) pour structurer tes réponses.
@@ -855,18 +851,48 @@ DONNÉES FINANCIÈRES DE L'UTILISATEUR
 
 Réponds à la question de l'utilisateur de façon utile, précise et actionnable."""
 
-            client = _anthropic_lib.Anthropic(api_key=api_key)
-            response = client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=1500,
-                system=system_prompt,
-                messages=[{"role": "user", "content": message}],
-            )
-            return response.content[0].text
+    def process_query(self, message: str) -> str:
+        """
+        Main entry point.
+        Tries Groq first (free), then Anthropic, then falls back to heuristics.
+        """
+        groq_key = os.environ.get("GROQ_API_KEY", "")
+        anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
 
-        except Exception as e:
-            # If API call fails, fall back gracefully
-            return self._heuristic_dispatch(message) + f"\n\n> ⚠️ *Note : L'IA avancée est temporairement indisponible ({type(e).__name__}). Réponse heuristique affichée.*"
+        # ── 1. Groq (free tier — preferred)
+        if _GROQ_AVAILABLE and groq_key:
+            try:
+                system_prompt = self._build_system_prompt()
+                client = _GroqClient(api_key=groq_key)
+                response = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    max_tokens=1500,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": message},
+                    ],
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                pass  # fall through to Anthropic
+
+        # ── 2. Anthropic Claude (paid)
+        if _ANTHROPIC_AVAILABLE and anthropic_key:
+            try:
+                system_prompt = self._build_system_prompt()
+                client = _anthropic_lib.Anthropic(api_key=anthropic_key)
+                response = client.messages.create(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=1500,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": message}],
+                )
+                return response.content[0].text
+            except Exception:
+                pass  # fall through to heuristic
+
+        # ── 3. Heuristic fallback (no API key configured)
+        return self._heuristic_dispatch(message)
 
     def _heuristic_dispatch(self, message: str) -> str:
         """Fallback heuristic dispatch using regex pattern matching."""

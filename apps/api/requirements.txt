@@ -6,4 +6,5 @@ python-jose[cryptography]
 pydantic[email]
 python-multipart
 anthropic
+groq
 python-dotenv
