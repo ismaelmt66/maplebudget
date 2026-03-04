@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError, Transaction, Subscription, getSubscriptions } from "@/lib/api";
 import { money } from "@/lib/format";
@@ -60,6 +60,15 @@ export default function AnalyticsPage() {
             .map(([ym, data]) => ({ month: ym, ...data }));
     }, [txs]);
 
+    const chartScrollRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to the rightmost (most recent) month on data load
+    useEffect(() => {
+        if (chartScrollRef.current && monthlyData.length > 0) {
+            chartScrollRef.current.scrollLeft = chartScrollRef.current.scrollWidth;
+        }
+    }, [monthlyData]);
+
     // Calculate max value for chart scaling
     const maxVal = useMemo(() => {
         if (monthlyData.length === 0) return 100;
@@ -96,7 +105,7 @@ export default function AnalyticsPage() {
                         <section className="rounded-3xl bg-black/40 backdrop-blur-md border border-white/5 shadow-xl p-8 animate-fade-in-up delay-100">
                             <h2 className="text-xl font-bold mb-8">Revenus vs Dépenses (Mensuel)</h2>
 
-                            <div className="relative w-full overflow-x-auto pb-6 pt-4">
+                            <div ref={chartScrollRef} className="relative w-full overflow-x-auto pb-6 pt-4 scroll-smooth">
                                 <div className="flex items-end gap-8 min-w-max h-[400px] border-b border-white/10 px-4 pt-24">
                                     {monthlyData.map((d) => {
                                         const incomeH = (d.income / maxVal) * 100;
@@ -137,7 +146,9 @@ export default function AnalyticsPage() {
                                 <div className="absolute top-0 right-0 text-xs font-mono opacity-50 px-2 py-1 bg-white/5 rounded-lg border border-white/10">Max: {money(maxVal)}</div>
                             </div>
 
-                            <div className="mt-8 flex items-center justify-center gap-8 text-sm font-medium">
+                            <p className="text-xs opacity-40 text-center mt-3 tracking-wide">← Défiler vers la gauche pour voir le passé</p>
+
+                            <div className="mt-4 flex items-center justify-center gap-8 text-sm font-medium">
                                 <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-full border border-white/5">
                                     <span className="block w-3 h-3 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.8)] bg-blue-400"></span>
                                     Revenus
