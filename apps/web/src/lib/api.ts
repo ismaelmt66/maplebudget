@@ -4,7 +4,10 @@
  */
 import { getToken } from "@/lib/auth";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
+let API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
+if (typeof window !== "undefined") {
+  API_BASE = `http://${window.location.hostname}:8000`;
+}
 
 /** Custom error class representing an HTTP error from the API */
 export class ApiError extends Error {

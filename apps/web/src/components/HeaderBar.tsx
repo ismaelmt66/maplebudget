@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { clearToken, getToken } from "@/lib/auth";
 import { me } from "@/lib/api";
+import { clearChatHistory } from "@/lib/useChatHistory";
 import QuickAddTransaction from "./QuickAddTransaction";
 import { Logo } from "./Logo";
 
@@ -144,6 +145,7 @@ export default function HeaderBar() {
   }, []);
 
   function logout() {
+    clearChatHistory(email);
     clearToken();
     setToken(null);
     setEmail(null);
@@ -207,7 +209,7 @@ export default function HeaderBar() {
               </Dropdown>
 
               <Dropdown label="Intelligence" icon={Icons.Magic}>
-                <DropdownItem href="/coach" label="Coach IA" desc="Analyses et conseils personnalisés" icon={Icons.Coach} />
+                <DropdownItem href="/coach" label="Nexus" desc="Votre assistant financier IA" icon={Icons.Coach} />
                 <DropdownItem href="/analytics" label="Analytique" desc="Graphiques et tendances avancés" icon={Icons.Analytics} />
                 <DropdownItem href="/achievements" label="Trophées" desc="Récompenses de progression" icon={Icons.Achievements} />
               </Dropdown>

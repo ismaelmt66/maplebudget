@@ -89,7 +89,6 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoComplete="email"
-                    className="w-full bg-black/40 border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20 py-3 rounded-xl"
                   />
                 </div>
               </label>
@@ -102,14 +101,13 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="current-password"
-                    className="w-full bg-black/40 border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20 py-3 rounded-xl"
                   />
                 </div>
               </label>
 
               <button
                 disabled={loading}
-                className="w-full mt-4 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.5)] transition-all transform hover:-translate-y-0.5"
+                className="mb-btn mb-btn-primary w-full mt-4 flex justify-center py-3.5"
               >
                 {loading ? (
                   <>

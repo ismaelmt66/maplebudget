@@ -61,14 +61,14 @@ export default function HomePage() {
             <div className="flex flex-wrap items-center gap-4 pt-4">
               <Link
                 href={authed ? "/dashboard" : "/register"}
-                className="px-8 py-4 rounded-xl bg-white text-black font-semibold shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_rgba(255,255,255,0.5)] transition-all transform hover:-translate-y-1"
+                className="mb-btn mb-btn-primary px-8 py-4 text-lg"
               >
                 {authed ? "Ouvrir l'App" : "Démarrer gratuitement"}
               </Link>
               {!authed && (
                 <Link
                   href="/login"
-                  className="px-8 py-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                  className="mb-btn px-8 py-4 text-lg"
                 >
                   Se connecter
                 </Link>

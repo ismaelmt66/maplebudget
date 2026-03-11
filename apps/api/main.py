@@ -22,17 +22,19 @@ from db import get_db
 import models
 import schemas
 from auth import hash_password, verify_password, create_access_token, get_current_user
+from routers import subscriptions as subscriptions_router
 
 app = FastAPI(title="NexLedger API", version="0.4.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|(\d{1,3}\.){3}\d{1,3}):300[0-9]",
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(subscriptions_router.router, prefix="/analytics")
 # ---------- Aides d’authentification ----------
 # `get_current_user` est maintenant importé de `auth.py` pour éviter les dépendances circulaires
 

@@ -1,7 +1,8 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import "./globals.css";
 import HeaderBar from "@/components/HeaderBar";
 import { ToastProvider } from "@/components/ui/Toast";
+import NexusWidget from "@/components/NexusWidget";
 
 export const metadata: Metadata = {
   title: "NexLedger - Portfolio FinTech",
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               NexLedger - portfolio FinTech (educational). Next.js + FastAPI.
             </footer>
           </div>
+          <NexusWidget />
         </ToastProvider>
       </body>
     </html>

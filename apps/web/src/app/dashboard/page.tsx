@@ -680,135 +680,118 @@ export default function DashboardPage(): React.JSX.Element {
 
   return (
     <main className="space-y-10 pb-16">
-      {/* header */}
+
+      {/* Hero Header */}
       <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between animate-fade-in-up">
         <div>
           <div className="flex flex-wrap gap-2">
             <span className="mb-badge bg-blue-500/10 border-blue-500/20 text-blue-300">Dashboard</span>
             <span className="mb-badge">Signal: {signal.label}</span>
-            <span className="mb-badge">Période: {fromDate && toDate ? `${fromDate} → ${toDate}` : "Toutes dates"}</span>
+            <span className="mb-badge">{fromDate && toDate ? `${fromDate} → ${toDate}` : "Toutes dates"}</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mt-4">
-            Vue rapide
-          </h1>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mt-4">Vue rapide</h1>
         </div>
 
         <div className="flex flex-wrap gap-3">
           <BankConnectButton onConnectSuccess={loadAll} />
-          <button className="px-5 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors" onClick={loadAll} disabled={loading}>
+          <button className="mb-btn gap-2" onClick={loadAll} disabled={loading}>
+            <svg className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
             {loading ? "Chargement…" : "Rafraîchir"}
           </button>
-          <Link className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white font-semibold transition-transform transform hover:-translate-y-0.5 shadow-[0_0_20px_rgba(99,102,241,0.3)]" href="/transactions">Gérer transactions</Link>
+          <Link className="mb-btn mb-btn-primary gap-2" href="/transactions">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Gérer transactions
+          </Link>
         </div>
       </section>
 
+      {/* Error */}
       {err && (
-        <div className="rounded-3xl p-6 relative overflow-hidden backdrop-blur-md animate-fade-in-up delay-100" style={{ borderColor: "rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.1)", boxShadow: "0 0 30px rgba(239,68,68,0.1)" }}>
+        <div className="rounded-2xl p-5 border border-red-500/30 bg-red-500/10 animate-fade-in-up">
           <div className="font-semibold text-red-100">Erreur</div>
-          <div className="text-sm opacity-80 mt-2 text-red-200">{err}</div>
-          <div className="text-sm opacity-70 mt-4">
+          <div className="text-sm opacity-80 mt-1 text-red-200">{err}</div>
+          <div className="mt-4">
             <Link className="mb-btn mb-btn-primary" href="/login">Se connecter</Link>
           </div>
         </div>
       )}
 
       {/* KPIs */}
-      <section className="grid gap-6 md:grid-cols-4 animate-fade-in-up delay-100">
+      <section className="grid gap-4 md:grid-cols-4 animate-fade-in-up delay-100">
         <KPI label="Revenus" value={money(totals.income)} hint="selon filtres" tone="good" />
         <KPI label="Dépenses" value={money(totals.expense)} hint="selon filtres" tone="warn" />
         <KPI label="Net" value={money(totals.net)} hint={`Signal: ${signal.label}`} tone={signal.tone} />
         <KPI label="Transactions" value={num(totals.count)} hint="dans la période" tone="neutral" />
       </section>
 
-      <section className="col-span-12 rounded-3xl bg-black/40 border border-white/5 p-8 animate-fade-in-up delay-200">
-        <div className="flex items-end justify-between gap-3 flex-wrap">
-          <div>
-            <div className="text-lg font-semibold">Filtre Temporel Rapide</div>
+      {/* Quick Date Filters */}
+      <section className="rounded-2xl bg-black/30 border border-white/[0.06] p-4 animate-fade-in-up delay-150">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <span className="text-xs font-semibold opacity-50 shrink-0 uppercase tracking-widest">Période</span>
+          <div className="flex flex-wrap gap-2">
+            {([30, 60, 90, "all"] as const).map((d) => {
+              const active = activeDateFilter === d;
+              return (
+                <button
+                  key={String(d)}
+                  onClick={() => setDateRange(d)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                    active
+                      ? "bg-white/12 text-white border-white/25 shadow-[0_0_10px_rgba(255,255,255,0.06)]"
+                      : "bg-transparent text-white/40 border-white/8 hover:bg-white/5 hover:text-white/70"
+                  }`}
+                >
+                  {d === "all" ? "Tout" : `${d}j`}
+                </button>
+              );
+            })}
           </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            className={`px-4 py-2 rounded-xl transition-all ${activeDateFilter === 30 ? "bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)] border border-white/20" : "bg-black/20 text-white/50 border border-white/5 hover:bg-white/5"}`}
-            onClick={() => setDateRange(30)}
-          >
-            30 Jours
-          </button>
-
-          <button
-            className={`px-4 py-2 rounded-xl transition-all ${activeDateFilter === 60 ? "bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)] border border-white/20" : "bg-black/20 text-white/50 border border-white/5 hover:bg-white/5"}`}
-            onClick={() => setDateRange(60)}
-          >
-            60 Jours
-          </button>
-
-          <button
-            className={`px-4 py-2 rounded-xl transition-all ${activeDateFilter === 90 ? "bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)] border border-white/20" : "bg-black/20 text-white/50 border border-white/5 hover:bg-white/5"}`}
-            onClick={() => setDateRange(90)}
-          >
-            90 Jours
-          </button>
-
-          <button
-            className={`px-4 py-2 rounded-xl transition-all ${activeDateFilter === "all" ? "bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)] border border-white/20" : "bg-black/20 text-white/50 border border-white/5 hover:bg-white/5"}`}
-            onClick={() => setDateRange("all")}
-          >
-            Toutes les transactions
-          </button>
         </div>
       </section>
 
-      {/* Cash Flow Forester Widget */}
+      {/* AI Forecast */}
       {forecast && (
-        <section className="col-span-12 rounded-3xl p-8 relative overflow-hidden bg-gradient-to-br from-indigo-900/40 to-purple-900/40 border border-white/10 shadow-[0_0_40px_rgba(99,102,241,0.15)] animate-fade-in-up delay-[250ms]">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/20 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
-
+        <section className="rounded-2xl p-7 relative overflow-hidden bg-gradient-to-br from-indigo-900/40 to-purple-900/30 border border-indigo-500/20 shadow-[0_0_40px_rgba(99,102,241,0.10)] animate-fade-in-up delay-200">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/12 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/12 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 backdrop-blur-md">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400">
-                  <path d="M22 11v1a10 10 0 1 1-9-10"></path>
-                  <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                  <line x1="9" y1="9" x2="9.01" y2="9"></line>
-                  <line x1="15" y1="9" x2="15.01" y2="9"></line>
+              <div className="p-2.5 bg-white/8 rounded-xl border border-indigo-500/20">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
                 </svg>
               </div>
               <div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-200 to-purple-200 bg-clip-text text-transparent">Nexus IA : Prévision Fin de Mois</h2>
-                <p className="text-sm opacity-70 mt-1">Analyse du rythme de dépenses actuelles ({money(forecast.run_rate)}/jour)</p>
+                <h2 className="text-xl font-bold bg-gradient-to-r from-indigo-200 to-purple-200 bg-clip-text text-transparent">
+                  Nexus IA — Prévision Cash-Flow
+                </h2>
+                <p className="text-xs opacity-50 mt-0.5">{money(forecast.run_rate)}/jour · {forecast.remaining_days} jours restants</p>
               </div>
             </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="p-6 bg-black/40 rounded-2xl border border-white/5 backdrop-blur-sm">
-                <div className="text-sm font-semibold opacity-60 uppercase tracking-wider">Dépenses Projetées</div>
-                <div className="text-3xl font-bold mt-2 text-white">{money(forecast.projected_expenses)}</div>
-                <div className="text-xs opacity-50 mt-1">D&apos;ici la fin du mois</div>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="p-5 bg-black/30 rounded-xl border border-white/[0.06]">
+                <div className="text-xs font-semibold opacity-50 uppercase tracking-wider">Dépenses Projetées</div>
+                <div className="text-2xl font-bold mt-2">{money(forecast.projected_expenses)}</div>
+                <div className="text-xs opacity-40 mt-1">D&apos;ici fin du mois</div>
               </div>
-
-              <div className="p-6 bg-black/40 rounded-2xl border border-white/5 backdrop-blur-sm">
-                <div className="text-sm font-semibold opacity-60 uppercase tracking-wider">Revenus Confirmés</div>
-                <div className="text-3xl font-bold mt-2 text-white">{money(forecast.current_income)}</div>
-                <div className="text-xs opacity-50 mt-1">Acquis sur le mois en cours</div>
+              <div className="p-5 bg-black/30 rounded-xl border border-white/[0.06]">
+                <div className="text-xs font-semibold opacity-50 uppercase tracking-wider">Revenus Confirmés</div>
+                <div className="text-2xl font-bold mt-2">{money(forecast.current_income)}</div>
+                <div className="text-xs opacity-40 mt-1">Acquis ce mois-ci</div>
               </div>
-
-              <div className="p-6 rounded-2xl border backdrop-blur-sm scale-105" style={{
-                borderColor: forecast.projected_net >= 0 ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)",
-                background: forecast.projected_net >= 0 ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)",
-              }}>
-                <div className="text-sm font-semibold opacity-80 uppercase tracking-wider" style={{
-                  color: forecast.projected_net >= 0 ? "#86efac" : "#fca5a5"
-                }}>Solde Prévu (Cash-Flow)</div>
-                <div className="text-4xl font-bold mt-2 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]" style={{
-                  color: forecast.projected_net >= 0 ? "#4ade80" : "#f87171"
-                }}>
+              <div className={`p-5 rounded-xl border ${forecast.projected_net >= 0 ? "border-green-500/25 bg-green-500/8" : "border-red-500/25 bg-red-500/8"}`}>
+                <div className={`text-xs font-semibold uppercase tracking-wider ${forecast.projected_net >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  Solde Prévu
+                </div>
+                <div className={`text-2xl font-bold mt-2 ${forecast.projected_net >= 0 ? "text-green-300" : "text-red-300"}`}>
                   {forecast.projected_net > 0 ? "+" : ""}{money(forecast.projected_net)}
                 </div>
-                <div className="text-xs opacity-70 mt-2 font-medium">
-                  {forecast.projected_net >= 0
-                    ? `Excellent rythme, continuez comme ça !`
-                    : `Attention, vous risquez le déficit d'ici ${forecast.remaining_days} jours.`}
+                <div className="text-xs opacity-60 mt-1">
+                  {forecast.projected_net >= 0 ? "Excellent rythme !" : `Risque déficit dans ${forecast.remaining_days}j`}
                 </div>
               </div>
             </div>
@@ -816,63 +799,54 @@ export default function DashboardPage(): React.JSX.Element {
         </section>
       )}
 
-      {/* Controls + chart */}
+      {/* Advanced Filters + Chart */}
       <section className="grid gap-6 lg:grid-cols-12 animate-fade-in-up delay-300">
-        <div className="lg:col-span-4 mb-card-soft p-6">
-          <div className="text-base font-semibold">Filtres</div>
-
-          <div className="mt-4 grid gap-3">
-            <label className="text-sm">
-              De
-              <input className="mb-input mt-1" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+        <div className="lg:col-span-4 rounded-2xl bg-black/30 border border-white/[0.06] p-5">
+          <div className="text-xs font-semibold opacity-50 uppercase tracking-widest mb-4">Filtres avancés</div>
+          <div className="grid gap-3">
+            <label className="text-sm opacity-70">
+              Début
+              <input className="mb-input mt-1.5" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
             </label>
-            <label className="text-sm">
-              À
-              <input className="mb-input mt-1" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            <label className="text-sm opacity-70">
+              Fin
+              <input className="mb-input mt-1.5" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
             </label>
-
-
-            <label className="text-sm">
+            <label className="text-sm opacity-70">
               Type
-              <select className="mb-input mt-1" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as "all" | "income" | "expense")}>
+              <select className="mb-input mt-1.5" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as "all" | "income" | "expense")}>
                 <option value="all">Tous</option>
                 <option value="income">Revenus</option>
                 <option value="expense">Dépenses</option>
               </select>
             </label>
-
-            <label className="text-sm">
-              Graph focus
-              <select className="mb-input mt-1" value={mode} onChange={(e) => setMode(e.target.value as "net" | "income" | "expense")}>
+            <label className="text-sm opacity-70">
+              Graphique
+              <select className="mb-input mt-1.5" value={mode} onChange={(e) => setMode(e.target.value as "net" | "income" | "expense")}>
                 <option value="net">Net</option>
                 <option value="income">Revenus</option>
                 <option value="expense">Dépenses</option>
               </select>
             </label>
-
             <button
-              className="mb-btn"
-              onClick={() => {
-                setDateRange("all");
-                setTypeFilter("all");
-                setMode("net");
-              }}
+              className="mb-btn w-full mt-1"
+              onClick={() => { setDateRange("all"); setTypeFilter("all"); setMode("net"); }}
             >
-              Reset
+              Réinitialiser
             </button>
           </div>
         </div>
-
         <div className="lg:col-span-8">
           <TrendChart series={series} mode={mode} />
         </div>
       </section>
 
-      {/* categories + recent */}
-      <section className="col-span-12 mb-card-soft p-6">
-        <div className="flex items-end justify-between gap-3 mb-6">
+      {/* Budget & Categories */}
+      <section className="rounded-2xl bg-black/30 border border-white/[0.06] p-6 animate-fade-in-up delay-400">
+        <div className="flex items-center justify-between gap-3 mb-6">
           <div>
-            <div className="text-base font-semibold">Suivi des Budgets & Catégories</div>
+            <div className="text-base font-semibold">Budgets &amp; Catégories</div>
+            <div className="text-xs opacity-50 mt-0.5">Suivi de la consommation par catégorie</div>
           </div>
           <span className="mb-badge">{byCategory.length} catégorie(s)</span>
         </div>
@@ -881,15 +855,12 @@ export default function DashboardPage(): React.JSX.Element {
           <div className="mb-6 flex justify-center">
             <DonutChart
               data={byCategory.slice(0, 8).map((c, i) => {
-                const palette = [
-                  "#6366f1", "#eab308", "#ef4444", "#06b6d4",
-                  "#f97316", "#8b5cf6", "#10b981", "#ec4899"
-                ];
+                const palette = ["#6366f1","#eab308","#ef4444","#06b6d4","#f97316","#8b5cf6","#10b981","#ec4899"];
                 return {
                   id: i,
                   label: c.name,
                   value: Math.abs(c.total),
-                  color: c.type === "income" ? "#22c55e" : palette[i % palette.length]
+                  color: c.type === "income" ? "#22c55e" : palette[i % palette.length],
                 };
               })}
               centerTextTop="Top 8"
@@ -903,50 +874,43 @@ export default function DashboardPage(): React.JSX.Element {
             const consumed = Math.abs(c.total);
             const limit = c.budget_limit || 0;
             const hasLimit = limit > 0 && c.type === "expense";
-
-            // Calculate progress width
             let w = 0;
             if (hasLimit) {
               w = Math.min((consumed / limit) * 100, 100);
             } else {
-              // fallback relative bar for unbudgeted or income
               const max = Math.max(...byCategory.map((x) => Math.abs(x.total)), 1);
               w = (consumed / max) * 100;
             }
-
-            // Calculate gradient tones
-            let grad = "linear-gradient(90deg, rgba(234,179,8,0.35), rgba(239,68,68,0.16))";
-
-            if (c.type === "income") {
-              grad = "linear-gradient(90deg, rgba(34,197,94,0.35), rgba(96,165,250,0.18))";
-            } else if (hasLimit) {
-              grad = w >= 90
-                ? "linear-gradient(90deg, rgba(239,68,68,0.8), rgba(220,38,38,0.5))" // Red warning
-                : w >= 75
-                  ? "linear-gradient(90deg, rgba(234,179,8,0.8), rgba(217,119,6,0.5))" // Yellow warning
-                  : "linear-gradient(90deg, rgba(34,197,94,0.8), rgba(22,163,74,0.5))"; // Green OK
+            let barColor = "rgba(234,179,8,0.5)";
+            if (c.type === "income") barColor = "rgba(34,197,94,0.6)";
+            else if (hasLimit) {
+              barColor = w >= 90 ? "rgba(239,68,68,0.7)" : w >= 75 ? "rgba(234,179,8,0.7)" : "rgba(34,197,94,0.7)";
             }
-
             return (
-              <div key={idx} className="rounded-3xl p-5 relative overflow-hidden bg-black/40 border border-white/5 hover:border-white/10 transition-colors shadow-lg">
-                <div className="flex items-center justify-between gap-3 relative z-10">
+              <div key={idx} className="rounded-2xl p-5 bg-black/30 border border-white/5 hover:border-white/10 hover:-translate-y-0.5 transition-all duration-200">
+                <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-semibold text-lg truncate">{c.name}</div>
-                    <div className="text-xs opacity-70 mt-1 uppercase tracking-wider">
-                      {c.type === "income" ? "Revenus" : "Dépenses"} • {num(c.count)} tx
+                    <div className="font-semibold truncate">{c.name}</div>
+                    <div className="text-xs opacity-50 mt-0.5 uppercase tracking-wider">
+                      {c.type === "income" ? "Revenus" : "Dépenses"} · {num(c.count)} tx
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-bold text-xl">{money(consumed)}</div>
+                  <div className="text-right shrink-0">
+                    <div className="font-bold text-lg">{money(consumed)}</div>
                     {hasLimit && (
-                      <div className="text-xs opacity-60 mt-1">sur {money(limit)}</div>
+                      <div className="text-xs opacity-50 mt-0.5">/ {money(limit)}</div>
                     )}
                   </div>
                 </div>
-
-                <div className="mt-4 h-2 rounded-full bg-black/50 overflow-hidden relative z-10 border border-white/5 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]">
-                  <div className="h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${w}%`, background: grad, boxShadow: `0 0 20px ${c.type !== 'income' && w > 80 ? 'rgba(239,68,68,0.5)' : 'rgba(34,197,94,0.3)'}` }} />
+                <div className="mt-4 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700 ease-out"
+                    style={{ width: `${w}%`, background: barColor, boxShadow: `0 0 8px ${barColor}` }}
+                  />
                 </div>
+                {hasLimit && (
+                  <div className="mt-1.5 text-xs opacity-40 text-right">{w.toFixed(0)}% utilisé</div>
+                )}
               </div>
             );
           })}

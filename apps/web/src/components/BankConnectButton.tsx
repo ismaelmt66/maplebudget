@@ -86,17 +86,17 @@ export default function BankConnectButton({ onConnectSuccess }: { onConnectSucce
     const { open, ready } = usePlaidLink(config);
 
     return (
-        <div className="flex flex-col items-center">
-            {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
-            <button
-                onClick={() => open()}
-                disabled={!ready || !token || loading}
-                className="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-600 text-white font-semibold rounded-lg shadow-md hover:from-teal-600 hover:to-emerald-700 disabled:opacity-50 transition-all duration-300 transform hover:-translate-y-1 active:scale-95 flex items-center gap-2"
-            >
-                <span className="text-xl">🏦</span>
-                {loading ? "Connexion en cours..." : "Connecter une Banque"}
-            </button>
-            {!ready && !error && <p className="text-xs text-gray-500 mt-2 animate-pulse">Initialisation de l&apos;API sécurisée...</p>}
-        </div>
+        <button
+            onClick={() => open()}
+            disabled={!ready || !token || loading}
+            title={!ready && !error ? "Initialisation de l'API s\u00e9curis\u00e9e..." : undefined}
+            className="mb-btn gap-2 disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, #0d9488, #059669)", borderColor: "transparent", boxShadow: "0 4px 20px rgba(16,185,129,0.25)" }}
+        >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+            {loading ? "Connexion..." : "Connecter une Banque"}
+        </button>
     );
 }
