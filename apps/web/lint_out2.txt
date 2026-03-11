@@ -1,0 +1,164 @@
+
+> nexledger-web@2.0.0 lint
+> eslint
+
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\app\assets\page.tsx
+   18:10  warning  'ResponsiveContainer' is defined but never used  @typescript-eslint/no-unused-vars
+   18:31  warning  'AreaChart' is defined but never used            @typescript-eslint/no-unused-vars
+   18:42  warning  'XAxis' is defined but never used                @typescript-eslint/no-unused-vars
+   18:49  warning  'YAxis' is defined but never used                @typescript-eslint/no-unused-vars
+   18:56  warning  'Tooltip' is defined but never used              @typescript-eslint/no-unused-vars
+   18:65  warning  'Area' is defined but never used                 @typescript-eslint/no-unused-vars
+   18:71  warning  'CartesianGrid' is defined but never used        @typescript-eslint/no-unused-vars
+  459:16  warning  'e' is defined but never used                    @typescript-eslint/no-unused-vars
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\app\dashboard\page.tsx
+  467:29   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\app\dashboard\page.tsx:467:29
+  465 |
+  466 |       {/* Tooltip ultra-premium */}
+> 467 |       {hoverIdx !== null && wrapRef.current && (
+      |                             ^^^^^^^^^^^^^^^ Cannot access ref value during render
+  468 |         <div
+  469 |           className="absolute z-50 pointer-events-none transition-all duration-150 ease-out"
+  470 |           style={{                                                                                                                                                                    react-hooks/refs
+  467:29   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\app\dashboard\page.tsx:467:29
+  465 |
+  466 |       {/* Tooltip ultra-premium */}
+> 467 |       {hoverIdx !== null && wrapRef.current && (
+      |                             ^^^^^^^^^^^^^^^ Cannot access ref value during render
+  468 |         <div
+  469 |           className="absolute z-50 pointer-events-none transition-all duration-150 ease-out"
+  470 |           style={{                                                                                                                                                                    react-hooks/refs
+  472:38   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\app\dashboard\page.tsx:472:38
+  470 |           style={{
+  471 |             width: 280,
+> 472 |             left: clamp(mx + 20, 12, wrapRef.current.clientWidth - 300),
+      |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  473 |             top: clamp(my - 40, 12, wrapRef.current.clientHeight - 180),
+  474 |           }}
+  475 |         >                                                                                                                                             react-hooks/refs
+  473:37   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\app\dashboard\page.tsx:473:37
+  471 |             width: 280,
+  472 |             left: clamp(mx + 20, 12, wrapRef.current.clientWidth - 300),
+> 473 |             top: clamp(my - 40, 12, wrapRef.current.clientHeight - 180),
+      |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  474 |           }}
+  475 |         >
+  476 |           <div className="rounded-2xl border border-white/20 bg-black/60 backdrop-blur-xl shadow-[0_30px_60px_rgba(0,0,0,0.6)] p-5 relative overflow-hidden">  react-hooks/refs
+  516:25   error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react/no-unescaped-entities
+  540:10   warning  'cats' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+  549:3    warning  The 'loadAll' function makes the dependencies of useEffect Hook (at line 597) change on every render. To fix this, wrap the definition of 'loadAll' in its own useCallback() Hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   react-hooks/exhaustive-deps
+  584:5    warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+  589:5    warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+  676:9    warning  'recent' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+  834:117  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  843:105  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\app\goals\page.tsx
+   19:10   warning  'loading' is assigned a value but never used                     @typescript-eslint/no-unused-vars
+   51:17   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   85:17   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  102:17   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  116:17   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  179:288  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  255:120  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\app\page.tsx
+   58:79   error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  111:76   error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  115:77   error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  138:164  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  169:123  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  198:51   error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\app\register\page.tsx
+   8:10  warning  'Button' is defined but never used                               @typescript-eslint/no-unused-vars
+  10:10  warning  'Card' is defined but never used                                 @typescript-eslint/no-unused-vars
+  10:16  warning  'CardBody' is defined but never used                             @typescript-eslint/no-unused-vars
+  32:17  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  57:18  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\app\subscriptions\page.tsx
+  30:25   error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  51:97   error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  88:116  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\app\transactions\page.tsx
+   26:10   warning  'loading' is assigned a value but never used                                                                                                                                @typescript-eslint/no-unused-vars
+   59:3    warning  The 'load' function makes the dependencies of useEffect Hook (at line 88) change on every render. To fix this, wrap the definition of 'load' in its own useCallback() Hook  react-hooks/exhaustive-deps
+   67:17   error    Unexpected any. Specify a different type                                                                                                                                    @typescript-eslint/no-explicit-any
+  134:17   error    Unexpected any. Specify a different type                                                                                                                                    @typescript-eslint/no-explicit-any
+  154:17   error    Unexpected any. Specify a different type                                                                                                                                    @typescript-eslint/no-explicit-any
+  190:17   error    Unexpected any. Specify a different type                                                                                                                                    @typescript-eslint/no-explicit-any
+  204:17   error    Unexpected any. Specify a different type                                                                                                                                    @typescript-eslint/no-explicit-any
+  257:216  error    Unexpected any. Specify a different type                                                                                                                                    @typescript-eslint/no-explicit-any
+  326:167  error    Unexpected any. Specify a different type                                                                                                                                    @typescript-eslint/no-explicit-any
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\components\BankConnectButton.tsx
+  30:27   error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  39:74   error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  67:23   error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  93:109  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\components\DashboardDonut.tsx
+  50:13  error  Error: Cannot reassign variable after render completes
+
+Reassigning `currentOffset` after render has completed can cause inconsistent behavior on subsequent renders. Consider using state instead.
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\components\DashboardDonut.tsx:50:13
+  48 |             };
+  49 |
+> 50 |             currentOffset += strokeLength;
+     |             ^^^^^^^^^^^^^ Cannot reassign `currentOffset` after render completes
+  51 |             return segment;
+  52 |         });
+  53 |     }, [data, total, circumference]);  react-hooks/immutability
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\components\HeaderBar.tsx
+  131:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\components\HeaderBar.tsx:131:5
+  129 |   useEffect(() => {
+  130 |     const t = getToken();
+> 131 |     setToken(t);
+      |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  132 |
+  133 |     if (t) {
+  134 |       me()  react-hooks/set-state-in-effect
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\components\Logo.tsx
+  12:7  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\components\QuickAddTransaction.tsx
+  36:8   warning  React Hook useEffect has a missing dependency: 'loadCats'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  69:23  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\components\ui\Toast.tsx
+  3:78  warning  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 60 problems (38 errors, 22 warnings)
+  0 errors and 2 warnings potentially fixable with the `--fix` option.
+

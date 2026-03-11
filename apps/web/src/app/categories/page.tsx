@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
     apiFetch,
@@ -9,8 +9,6 @@ import {
     updateCategory,
     deleteCategory,
 } from "@/lib/api";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 
 function loadCategories() {
@@ -30,26 +28,26 @@ export default function CategoriesPage() {
     const [editType, setEditType] = useState("expense");
     const [editBudget, setEditBudget] = useState("");
 
-    const load = async () => {
+    const load = useCallback(async () => {
         try {
             setErr(null);
             setLoading(true);
             const data = await loadCategories();
             setCats(data);
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (e instanceof ApiError && e.status === 401) {
                 router.push("/login");
             } else {
-                setErr(e?.message ?? "Erreur");
+                setErr((e as Error)?.message ?? "Erreur");
             }
         } finally {
             setLoading(false);
         }
-    };
+    }, [router]);
 
     useEffect(() => {
         load();
-    }, [router]);
+    }, [load]);
 
     const startEdit = (c: Category) => {
         setEditingId(c.id);
@@ -77,8 +75,8 @@ export default function CategoriesPage() {
             addToast("Catégorie mise à jour", "success");
             setEditingId(null);
             load();
-        } catch (e: any) {
-            addToast(e?.message ?? "Erreur", "error");
+        } catch (e: unknown) {
+            addToast((e as Error)?.message ?? "Erreur", "error");
         }
     };
 
@@ -88,8 +86,8 @@ export default function CategoriesPage() {
             await deleteCategory(id);
             addToast("Catégorie supprimée", "success");
             load();
-        } catch (e: any) {
-            addToast(e?.message ?? "Impossible de supprimer (transactions liées ?)", "error");
+        } catch (e: unknown) {
+            addToast((e as Error)?.message ?? "Impossible de supprimer (transactions liées ?)", "error");
         }
     };
 
@@ -221,7 +219,7 @@ export default function CategoriesPage() {
                                 {cats.length === 0 && (
                                     <tr>
                                         <td colSpan={4} className="px-5 py-12 text-center opacity-60 italic text-sm">
-                                            Aucune catégorie. Créez-en une depuis l'ajout de transaction.
+                                            Aucune catégorie. Créez-en une depuis l&apos;ajout de transaction.
                                         </td>
                                     </tr>
                                 )}

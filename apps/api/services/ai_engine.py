@@ -873,7 +873,7 @@ Réponds à la question de l'utilisateur de façon utile, précise et actionnabl
                     ],
                 )
                 return response.choices[0].message.content
-            except Exception as e:
+            except Exception:
                 pass  # fall through to Anthropic
 
         # ── 2. Anthropic Claude (paid)
@@ -1035,11 +1035,39 @@ Réponds à la question de l'utilisateur de façon utile, précise et actionnabl
             if total_pos > 0 else 0.0
         )
 
+        # On récupère la capacité d'épargne mensuelle réelle (via l'historique de tx)
+        try:
+            s_data = self._get_savings_data()
+            monthly_savings = float(s_data.get("monthly_savings", 0.0))
+            if monthly_savings < 0:
+                monthly_savings = 0.0
+        except Exception:
+            monthly_savings = 0.0
+
         def project_net_worth(years: int) -> float:
-            future_assets = sum(
-                balance * ((1 + annual_rates.get(atype, 0.02)) ** years)
-                for atype, balance in type_totals.items()
-            )
+            # Répartition théorique de l'épargne mensuelle proportionnellement au portefeuille actuel
+            # Si pas d'actifs productifs, on met tout dans 'savings' (épargne classique)
+            weights = {atype: balance / total_pos for atype, balance in type_totals.items()} if total_pos > 0 else {"savings": 1.0}
+            
+            future_assets = 0.0
+            
+            for atype in type_totals.keys() | weights.keys():
+                balance = type_totals.get(atype, 0.0)
+                r = annual_rates.get(atype, 0.02)
+                r_monthly = r / 12
+                pmt = monthly_savings * weights.get(atype, 0.0)
+                n_months = years * 12
+                
+                # Formule complète : Intérêts composés sur Capital + Intérêts composés sur Versements Mensuels (Annuity)
+                if r > 0:
+                    fv_capital = balance * ((1 + r) ** years)
+                    fv_annuity = pmt * (((1 + r_monthly) ** n_months - 1) / r_monthly) * (1 + r_monthly)
+                    future_assets += fv_capital + fv_annuity
+                else:
+                    future_assets += balance + (pmt * n_months)
+
+            # Dettes amorties (simplification : on suppose qu'elles n'augmentent pas si on les rembourse, 
+            # mais ici on garde la logique stricte d'intérêt si non remboursées)
             future_liabilities = total_liabilities * ((1 + liability_rate) ** years)
             return future_assets - future_liabilities
 
@@ -1051,7 +1079,8 @@ Réponds à la question de l'utilisateur de façon utile, précise et actionnabl
             if net_worth == 0:
                 return "N/A"
             pct = (proj - net_worth) / abs(net_worth) * 100
-            return f"{pct:+.0f}%"
+            # Formater les grands pourcentages (ex: +1250%)
+            return f"+{pct:,.0f}%"
 
         # ─── 7. Recommandations personnalisées
         recommendations = []
@@ -1097,7 +1126,56 @@ Réponds à la question de l'utilisateur de façon utile, précise et actionnabl
             "stock": "Bourse", "crypto": "Crypto", "real_estate": "Immobilier",
         }
 
-        # ─── 9. Rapport Final
+        # ─── 9. Rapport Final (Propulsé par IA Groq Llama 3)
+        raw_stats = f"""
+Patrimoine Net : {net_worth:,.2f} $
+Actifs Productifs : {total_pos:,.2f} $
+Dettes : {total_liabilities:,.2f} $ (Ratio: {debt_ratio:.1f}%)
+Score de Diversification : {diversity_score}/100 ({n_types} classes d'actifs)
+Score Santé Globale : {health_score}/100
+Fonds d'Urgence : {liquid_balance:,.2f} $ (Objectif 3 mois: {emergency_3m:,.2f} $)
+Projection 10 ans (intérêts composés {weighted_rate*100:.1f}%) : {proj_10:,.2f} $
+Projection 20 ans : {proj_20:,.2f} $
+Projection 30 ans : {proj_30:,.2f} $
+"""
+        prompt = f"""Agis comme un conseiller financier d'élite, ultra-agressif et disruptif (façon Ray Dalio ou un hedge fund manager pointu).
+Voici les chiffres exacts de mon patrimoine actuel, calculés mathématiquement :
+{raw_stats}
+
+Rédige une "Analyse IA — Patrimoine" EXTRÊMEMENT puissante, brutale et sans complaisance.
+Structure OBLIGATOIRE (utilise du Markdown GitHub riche, clair, aéré, avec des emojis et des blockquotes comme > [!WARNING] ou > [!TIP]) :
+
+## 🧠 Diagnostic Sans Concession
+(Ce qui est excellent, ce qui est catastrophique dans mes chiffres. Pas de langue de bois.)
+
+## 🏆 Score de Survie & Indépendance ({health_score}/100)
+(Analyse ma diversification, mon fonds d'urgence et ma gestion de la dette. Mon portefeuille survivrait-il à une crise économique majeure ?)
+
+## 🚀 La Machine à Intérêts Composés
+(Commente agressivement mes projections à 10, 20 et 30 ans. Ma trajectoire actuelle mène-t-elle à la richesse intergénérationnelle ou à l'inflation rampante ?)
+
+## ⚡ Plan d'Attaque Immédiat
+(3 actions directes et mathématiques pour décupler ce patrimoine dès demain matin, basées strictement sur mes faiblesses actuelles. Inspire-toi des recommandations classiques mais rends-les hardcore).
+
+L'analyse doit être hautement personnalisée et sonner "comme jamais vue" dans une app de finance. Ne mets pas de texte d'introduction fade, attaque directement avec le titre de niveau 2 (## 🧠 Diagnostic Sans Concession)."""
+
+        try:
+            groq_key = os.environ.get("GROQ_API_KEY", "")
+            if _GROQ_AVAILABLE and groq_key:
+                client = _GroqClient(api_key=groq_key)
+                response = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    max_tokens=2500,
+                    messages=[
+                        {"role": "system", "content": "Tu es l'IA financière la plus avancée et directe au monde. Ton but est d'enrichir l'utilisateur par la vérité brutale et les mathématiques. Ton ton est glacialement précis, expert, mais constructif."},
+                        {"role": "user", "content": prompt},
+                    ],
+                )
+                return response.choices[0].message.content
+        except Exception:
+            pass
+
+        # Fallback si l'IA plante
         report = f"""## 🧠 Analyse IA — Patrimoine au {today_str}
 
 > [!NOTE]
@@ -1126,7 +1204,6 @@ Réponds à la question de l'utilisateur de façon utile, précise et actionnabl
 | **Ratio Dette/Actif** | {debt_ratio:.1f}% |
 
 """
-
         if type_totals:
             report += "### 🗂️ Répartition des Actifs\n\n"
             report += "| Classe d'actif | Valeur | Part | Rendement estimé |\n"
@@ -1153,7 +1230,6 @@ Réponds à la question de l'utilisateur de façon utile, précise et actionnabl
 ---
 
 """
-
         report += f"""### 🚀 Projections par Intérêts Composés
 
 > [!TIP]
@@ -1167,7 +1243,6 @@ Réponds à la question de l'utilisateur de façon utile, précise et actionnabl
 | **Dans 30 ans** | {proj_30:,.2f} $ | {growth_str(proj_30)} |
 
 """
-
         if total_liabilities > 0:
             cost_10y = total_liabilities * ((1 + liability_rate) ** 10) - total_liabilities
             report += f"""### 💳 Stratégie de Remboursement des Dettes
@@ -1176,16 +1251,13 @@ Dettes actuelles : **{total_liabilities:,.2f} $** | Coût en intérêts sur 10 a
 
 **Stratégie Avalanche** *(économise le plus en intérêts)*
 - Remboursez en priorité la dette au taux d'intérêt le plus élevé
-- Minimise le coût total et accélère la liberté financière
 
 **Stratégie Snowball** *(motivation maximale)*
 - Remboursez en priorité la plus petite dette
-- Chaque dette effacée libère du cash-flow et renforce la discipline
 
 ---
 
 """
-
         report += "### 💡 Recommandations Personnalisées\n\n"
         for rec in recommendations:
             report += f"- {rec}\n"
@@ -1193,3 +1265,32 @@ Dettes actuelles : **{total_liabilities:,.2f} $** | Coût en intérêts sur 10 a
         report += "\n> [!TIP]\n> Utilisez les **Règles d'Allocation** pour automatiser votre épargne : définissez qu'un % de vos revenus soit viré automatiquement vers vos actifs cibles à chaque paie."
 
         return report
+
+    def predict_cashflow(self) -> dict:
+        """Math-based cashflow forecasting for the Dashboard Widget."""
+        now = datetime.now()
+        start_date, end_date = self._get_current_month_boundaries()
+        stats = self._get_monthly_stats(start_date, end_date)
+        
+        try:
+            days_in_month = (datetime.strptime(end_date, "%Y-%m-%d") - datetime.strptime(start_date, "%Y-%m-%d")).days + 1
+            days_passed = (now - datetime.strptime(start_date, "%Y-%m-%d")).days + 1
+            days_passed = max(1, days_passed) # avoid division by zero
+        except Exception:
+            days_in_month = 30
+            days_passed = 15
+            
+        run_rate = stats["expenses"] / days_passed
+        remaining_days = max(0, days_in_month - days_passed)
+        
+        projected_expenses = stats["expenses"] + (run_rate * remaining_days)
+        projected_net = stats["income"] - projected_expenses
+        
+        return {
+            "current_income": stats["income"],
+            "current_expenses": stats["expenses"],
+            "projected_expenses": projected_expenses,
+            "projected_net": projected_net,
+            "run_rate": run_rate,
+            "remaining_days": remaining_days
+        }

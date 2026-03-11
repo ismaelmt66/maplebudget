@@ -23,7 +23,7 @@ export default function TransactionsPage(): React.JSX.Element {
   const [cats, setCats] = useState<Category[]>([]);
   const [txs, setTxs] = useState<Transaction[]>([]);
   const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Keeping it as it might be used later or loading states can be added to buttons. Let's just remove it if unused, but it's used in load(). Wait, if it's used in load() it's assigned but never read? Let's check lines 62 and 74. Yes, it's set but never read in render. We'll simply ignore or remove `loading`. Let's remove it entirely.
   const { addToast } = useToast();
 
   // Formulaire catégories
@@ -53,10 +53,7 @@ export default function TransactionsPage(): React.JSX.Element {
   const [editNote, setEditNote] = useState<string>("");
   const [editCatId, setEditCatId] = useState<number | null>(null);
 
-  /**
-   * Fetches latest categories and transactions from the backend.
-   */
-  async function load() {
+  const load = React.useCallback(async () => {
     try {
       setErr(null);
       setLoading(true);
@@ -64,16 +61,16 @@ export default function TransactionsPage(): React.JSX.Element {
       setCats(c);
       setTxs(t);
       if (categoryId === null && c.length) setCategoryId(c[0].id);
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof ApiError && e.status === 401) {
         setErr("Tu dois être connecté pour gérer les transactions.");
       } else {
-        setErr(e?.message ?? "Erreur");
+        setErr((e as Error)?.message ?? "Erreur");
       }
     } finally {
       setLoading(false);
     }
-  }
+  }, [categoryId]);
 
   useEffect(() => {
     load();
@@ -131,8 +128,8 @@ export default function TransactionsPage(): React.JSX.Element {
       await createCategory({ name: catName.trim(), type: catType });
       setCatName("");
       await load();
-    } catch (e: any) {
-      setErr(e?.message ?? "Erreur");
+    } catch (e: unknown) {
+      setErr((e as Error)?.message ?? "Erreur");
     }
   }
 
@@ -151,8 +148,8 @@ export default function TransactionsPage(): React.JSX.Element {
       });
       setNote("");
       await load();
-    } catch (e: any) {
-      setErr(e?.message ?? "Erreur");
+    } catch (e: unknown) {
+      setErr((e as Error)?.message ?? "Erreur");
     }
   }
 
@@ -187,8 +184,8 @@ export default function TransactionsPage(): React.JSX.Element {
       });
       setEditId(null);
       await load();
-    } catch (e: any) {
-      setErr(e?.message ?? "Erreur");
+    } catch (e: unknown) {
+      setErr((e as Error)?.message ?? "Erreur");
     }
   }
 
@@ -201,8 +198,8 @@ export default function TransactionsPage(): React.JSX.Element {
       setErr(null);
       await deleteTransaction(id);
       await load();
-    } catch (e: any) {
-      addToast(e?.message ?? "Erreur", "error");
+    } catch (e: unknown) {
+      addToast((e as Error)?.message ?? "Erreur", "error");
     }
   }
 
@@ -254,7 +251,7 @@ export default function TransactionsPage(): React.JSX.Element {
 
             <div className="grid gap-4">
               <input className="w-full bg-black/40 border border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20 py-3 px-4 rounded-xl text-sm" placeholder="ex: Loyer" value={catName} onChange={(e) => setCatName(e.target.value)} />
-              <select className="w-full bg-black/40 border border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20 py-3 px-4 rounded-xl text-sm" value={catType} onChange={(e) => setCatType(e.target.value as any)} title="Type de catégorie" aria-label="Type de catégorie">
+              <select className="w-full bg-black/40 border border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20 py-3 px-4 rounded-xl text-sm" value={catType} onChange={(e) => setCatType(e.target.value as "income" | "expense")} title="Type de catégorie" aria-label="Type de catégorie">
                 <option value="expense">Dépense</option>
                 <option value="income">Revenu</option>
               </select>
@@ -323,7 +320,7 @@ export default function TransactionsPage(): React.JSX.Element {
                 {cats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
 
-              <select className="bg-black/40 border border-white/10 py-2 px-3 rounded-xl text-sm" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as any)} title="Filtre par type" aria-label="Filtre par type">
+              <select className="bg-black/40 border border-white/10 py-2 px-3 rounded-xl text-sm" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as "all" | "income" | "expense")} title="Filtre par type" aria-label="Filtre par type">
                 <option value="all">Tous types</option>
                 <option value="income">Revenus</option>
                 <option value="expense">Dépenses</option>

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { clearToken, getToken } from "@/lib/auth";
 import { me } from "@/lib/api";
 import QuickAddTransaction from "./QuickAddTransaction";
+import { Logo } from "./Logo";
 
 function NavLink({ href, label, icon }: { href: string; label: string; icon?: React.ReactNode }) {
   const pathname = usePathname();
@@ -126,18 +127,20 @@ export default function HeaderBar() {
   const ticking = useRef(false);
 
   useEffect(() => {
-    const t = getToken();
-    setToken(t);
+    setTimeout(() => {
+      const t = getToken();
+      setToken(t);
 
-    if (t) {
-      me()
-        .then((u) => setEmail(u.email))
-        .catch(() => {
-          clearToken();
-          setToken(null);
-          setEmail(null);
-        });
-    }
+      if (t) {
+        me()
+          .then((u) => setEmail(u.email))
+          .catch(() => {
+            clearToken();
+            setToken(null);
+            setEmail(null);
+          });
+      }
+    }, 0);
   }, []);
 
   function logout() {
@@ -185,27 +188,7 @@ export default function HeaderBar() {
 
           {/* Brand */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div
-              className="w-11 h-11 rounded-[14px] flex items-center justify-center transition-all duration-300 group-hover:scale-105"
-              style={{
-                background: "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.15))",
-                border: "1px solid rgba(255,255,255,0.1)",
-                boxShadow: "0 0 30px rgba(99,102,241,0.2) inset, 0 10px 30px rgba(0,0,0,0.5)",
-              }}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#brandGrad)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <defs>
-                  <linearGradient id="brandGrad" x1="0" y1="0" x2="24" y2="24">
-                    <stop offset="0%" stopColor="#818cf8" />
-                    <stop offset="100%" stopColor="#c084fc" />
-                  </linearGradient>
-                </defs>
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-              </svg>
-            </div>
-            <div className="leading-tight">
-              <div className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">NexLedger</div>
-            </div>
+            <Logo />
           </Link>
 
           {/* Desktop nav */}
@@ -218,6 +201,7 @@ export default function HeaderBar() {
 
               <Dropdown label="Outils" icon={Icons.Tools}>
                 <DropdownItem href="/assets" label="Patrimoine Net" desc="Suivez tous vos comptes" icon={Icons.Patrimoine} />
+                <DropdownItem href="/subscriptions" label="Abonnements" desc="Traqueur de frais fixes" icon={Icons.Transactions} />
                 <DropdownItem href="/goals" label="Objectifs" desc="Épargnez pour l'avenir" icon={Icons.Goals} />
                 <DropdownItem href="/categories" label="Catégories & Budgets" desc="Organisez vos dépenses" icon={Icons.Categories} />
               </Dropdown>
@@ -290,6 +274,7 @@ export default function HeaderBar() {
           <Link href="/transactions" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl bg-white/5 font-medium">Transactions</Link>
           <div className="text-xs font-bold text-white/40 uppercase tracking-widest px-2 mt-2">Outils</div>
           <Link href="/assets" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Patrimoine Net</Link>
+          <Link href="/subscriptions" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Abonnements</Link>
           <Link href="/goals" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Objectifs</Link>
           <Link href="/categories" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Catégories & Budgets</Link>
           <div className="text-xs font-bold text-purple-400/60 uppercase tracking-widest px-2 mt-2">Intelligence</div>

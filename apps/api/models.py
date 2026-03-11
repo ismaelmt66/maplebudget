@@ -21,6 +21,7 @@ class User(Base):
     transactions: Mapped[list["Transaction"]] = relationship(back_populates="user")
     goals: Mapped[list["Goal"]] = relationship(back_populates="user")
     assets: Mapped[list["Asset"]] = relationship(back_populates="user")
+    bank_connections: Mapped[list["BankConnection"]] = relationship(back_populates="user")
 
 
 class Category(Base):
@@ -50,6 +51,10 @@ class Transaction(Base):
 
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
     category: Mapped["Category"] = relationship(back_populates="transactions")
+
+    external_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
+    bank_connection_id: Mapped[int | None] = mapped_column(ForeignKey("bank_connections.id"), nullable=True)
+    bank_connection: Mapped["BankConnection | None"] = relationship(back_populates="transactions")
 
 
 # --- Goals ---
@@ -105,3 +110,18 @@ class AllocationRule(Base):
     user: Mapped["User"] = relationship()
     target_asset: Mapped["Asset"] = relationship()
     source_category: Mapped["Category | None"] = relationship()
+
+
+class BankConnection(Base):
+    """Connexion bancaire via Plaid ou autre."""
+    __tablename__ = "bank_connections"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    institution_name: Mapped[str] = mapped_column(String(255))
+    access_token: Mapped[str] = mapped_column(String(255))
+    item_id: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    cursor: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user: Mapped["User"] = relationship(back_populates="bank_connections")
+    transactions: Mapped[list["Transaction"]] = relationship(back_populates="bank_connection", cascade="all, delete-orphan")

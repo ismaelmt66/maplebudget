@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
     ApiError, Asset, Category,
@@ -15,7 +15,6 @@ import { money } from "@/lib/format";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { ResponsiveContainer, AreaChart, XAxis, YAxis, Tooltip, Area, CartesianGrid } from "recharts";
 
 // ─── Mini Sparkline Component ───────────────────────────────────────────────
 function Sparkline({ history, positive }: { history: { date: string; balance: number }[]; positive: boolean }) {
@@ -115,6 +114,12 @@ function RichMarkdown({ text }: { text: string }) {
 // ─── Interactive Wealth Chart ─────────────────────────────────────────────────
 function InteractiveWealthChart({ data }: { data: { date: string; value: number }[] }) {
     const [range, setRange] = useState<"all" | "6m" | "1y" | "3y">("all");
+    const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+    const [mx, setMx] = useState(0);
+    const [my, setMy] = useState(0);
+    const [wrapWidth, setWrapWidth] = useState(300);
+    const wrapRef = useRef<HTMLDivElement>(null);
+    const hideTimer = useRef<number | null>(null);
 
     const filtered = useMemo(() => {
         if (range === "all" || data.length === 0) return data;
@@ -127,27 +132,100 @@ function InteractiveWealthChart({ data }: { data: { date: string; value: number 
     }, [data, range]);
 
     const isPositive = filtered.length >= 2 ? filtered[filtered.length - 1].value >= filtered[0].value : true;
-    const color = isPositive ? "#34d399" : "#f87171";
-    const gradId = isPositive ? "wgPos" : "wgNeg";
+    const theme = isPositive
+        ? { s: "rgba(52,211,153,0.90)", a1: "rgba(52,211,153,0.22)" }
+        : { s: "rgba(248,113,113,0.90)", a1: "rgba(248,113,113,0.22)" };
 
-    const fmtTick = (d: string) => {
-        try { return new Date(d + "T00:00:00").toLocaleDateString("fr-FR", { month: "short", year: "2-digit" }); }
-        catch { return d; }
-    };
-    const fmtLabel = (d: any) => {
-        if (!d) return "";
-        try { return new Date(d + "T00:00:00").toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" }); }
-        catch { return String(d); }
-    };
+    const chartData = useMemo(() => {
+        if (filtered.length < 2) return null;
+        const W = 1000, H = 300, PAD_L = 54, PAD_R = 24, PAD_T = 26, PAD_B = 38;
+        const values = filtered.map(p => p.value);
+        let min = Math.min(...values);
+        let max = Math.max(...values);
+        if (min === max) { min -= 100; max += 100; }
+        const span = max - min || 1;
+        const pad = span * 0.12;
+        min -= pad; max += pad;
+        const realSpan = max - min;
+        const xStep = (W - PAD_L - PAD_R) / (values.length - 1);
+
+        const pts = values.map((v, i) => {
+            const x = PAD_L + i * xStep;
+            const y = PAD_T + (H - PAD_T - PAD_B) * (1 - (v - min) / realSpan);
+            return { x, y, v, date: filtered[i].date };
+        });
+
+        const line = pts.reduce((acc, p, i, a) => {
+            if (i === 0) return `M ${p.x},${p.y}`;
+            const prev = a[i - 1];
+            const cp1x = prev.x + (p.x - prev.x) / 2;
+            return `${acc} C ${cp1x},${prev.y} ${cp1x},${p.y} ${p.x},${p.y}`;
+        }, "");
+
+        const area = `${line} L ${pts[pts.length - 1].x} ${H - PAD_B} L ${pts[0].x} ${H - PAD_B} Z`;
+        const y0 = Math.min(Math.max(PAD_T + (H - PAD_T - PAD_B) * (1 - (0 - min) / realSpan), PAD_T), H - PAD_B);
+
+        const ticks = Array.from({ length: 5 }, (_, i) => {
+            const t = i / 4;
+            const v = max - t * (max - min);
+            const y = PAD_T + (H - PAD_T - PAD_B) * t;
+            return { v, y };
+        });
+
+        const vTicks = Array.from({ length: 5 }, (_, i) => {
+            const idx = Math.floor(i * (pts.length - 1) / 4);
+            return pts[idx];
+        });
+
+        return { W, H, PAD_L, PAD_R, PAD_T, PAD_B, pts, min, max, line, area, ticks, y0, vTicks };
+    }, [filtered]);
+
+    function clearHideTimer() {
+        if (hideTimer.current) { window.clearTimeout(hideTimer.current); hideTimer.current = null; }
+    }
+
+    function scheduleHide() {
+        clearHideTimer();
+        hideTimer.current = window.setTimeout(() => setHoverIdx(null), 160);
+    }
+
+    function onMove(e: React.MouseEvent<SVGSVGElement>) {
+        if (!chartData) return;
+        clearHideTimer();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const vx = (x / rect.width) * chartData.W;
+        if (vx < chartData.PAD_L - 6 || vx > chartData.W - chartData.PAD_R + 6) {
+            scheduleHide(); return;
+        }
+        let best = 0, bestDist = Infinity;
+        for (let i = 0; i < chartData.pts.length; i++) {
+            const dx = Math.abs(chartData.pts[i].x - vx);
+            if (dx < bestDist) { bestDist = dx; best = i; }
+        }
+        setHoverIdx(best); setMx(x); setMy(y);
+        if (wrapRef.current) setWrapWidth(wrapRef.current.clientWidth);
+    }
+
+    if (!chartData) return <div className="text-sm opacity-70 p-6 flex justify-center h-[300px] items-center">Pas assez de données pour afficher le graphique.</div>;
+
+    const hi = hoverIdx !== null ? chartData.pts[hoverIdx] : null;
+
     const fmtY = (v: number) => {
         if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
         if (Math.abs(v) >= 1_000) return `${(v / 1_000).toFixed(0)}k`;
         return v.toFixed(0);
     };
 
+    const fmtTick = (d: string) => {
+        try { return new Date(d + "T00:00:00").toLocaleDateString("fr-FR", { month: "short", year: "2-digit" }); }
+        catch { return d; }
+    };
+
     return (
-        <div>
-            <div className="flex justify-end gap-1 mb-4">
+        <div className="relative isolate">
+            <div className="flex justify-end gap-1 mb-2 z-10 relative">
                 {(["all", "3y", "1y", "6m"] as const).map(r => (
                     <button key={r} onClick={() => setRange(r)}
                         className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${range === r ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-white/40 hover:text-white/70"}`}>
@@ -155,34 +233,79 @@ function InteractiveWealthChart({ data }: { data: { date: string; value: number 
                     </button>
                 ))}
             </div>
-            <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={filtered} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
+
+            <div className="relative h-[250px] md:h-[300px] w-full" ref={wrapRef}>
+                <svg viewBox={`0 0 ${chartData.W} ${chartData.H}`} className="w-full h-full absolute inset-0 drop-shadow-2xl" preserveAspectRatio="none" onMouseMove={onMove} onMouseLeave={scheduleHide}>
                     <defs>
-                        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor={color} stopOpacity={0.25} />
-                            <stop offset="95%" stopColor={color} stopOpacity={0} />
+                        <linearGradient id="fillAreaAssets" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stopColor={theme.s} stopOpacity="0.4" />
+                            <stop offset="100%" stopColor={theme.s} stopOpacity="0.0" />
                         </linearGradient>
+                        <linearGradient id="lineGradAssets" x1="0" x2="1" y1="0" y2="0">
+                            <stop offset="0%" stopColor={theme.s} stopOpacity="0.8" />
+                            <stop offset="50%" stopColor={theme.s} stopOpacity="1" />
+                            <stop offset="100%" stopColor={theme.s} stopOpacity="0.8" />
+                        </linearGradient>
+                        <filter id="neonGlowAssets" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="6" result="blur" />
+                            <feMerge>
+                                <feMergeNode in="blur" />
+                                <feMergeNode in="blur" />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                    <XAxis dataKey="date" tickFormatter={fmtTick}
-                        tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }}
-                        axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} minTickGap={50} />
-                    <YAxis tickFormatter={fmtY}
-                        tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }}
-                        axisLine={false} tickLine={false} width={52} />
-                    <Tooltip
-                        contentStyle={{ backgroundColor: "rgba(8,8,18,0.95)", border: `1px solid ${color}44`, borderRadius: "12px", padding: "8px 14px" }}
-                        labelStyle={{ color: "rgba(255,255,255,0.45)", fontSize: "11px", marginBottom: "4px" }}
-                        itemStyle={{ color, fontWeight: "bold", fontSize: "14px" }}
-                        formatter={(v) => [money(v as number), "Patrimoine Net"]}
-                        labelFormatter={fmtLabel}
-                        cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: "4 4" }}
-                    />
-                    <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2.5}
-                        fill={`url(#${gradId})`} dot={false}
-                        activeDot={{ r: 5, fill: color, stroke: "rgba(255,255,255,0.8)", strokeWidth: 2 }} />
-                </AreaChart>
-            </ResponsiveContainer>
+
+                    <line x1={chartData.PAD_L} y1={chartData.y0} x2={chartData.W - chartData.PAD_R} y2={chartData.y0} stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="4 4" />
+
+                    {chartData.ticks.map((t, i) => (
+                        <g key={`y-${i}`}>
+                            <line x1={chartData.PAD_L} y1={t.y} x2={chartData.W - chartData.PAD_R} y2={t.y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+                            <text x={chartData.PAD_L - 10} y={t.y + 4} textAnchor="end" fontSize="11" fontWeight="500" fill="rgba(255,255,255,0.35)">
+                                {fmtY(t.v)}
+                            </text>
+                        </g>
+                    ))}
+
+                    {chartData.vTicks.map((t, i) => (
+                        <text key={`x-${i}`} x={t.x} y={chartData.H - 10} textAnchor="middle" fontSize="10" fontWeight="500" fill="rgba(255,255,255,0.35)">
+                            {fmtTick(t.date)}
+                        </text>
+                    ))}
+
+                    <path d={chartData.area} fill="url(#fillAreaAssets)" className="transition-all duration-300" />
+                    <path d={chartData.line} fill="none" stroke="url(#lineGradAssets)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" filter="url(#neonGlowAssets)" className="transition-all duration-300" />
+
+                    {hi && (
+                        <g className="transition-all duration-75 ease-out" style={{ transform: `translate(${hi.x}px, ${hi.y}px)`, transformOrigin: "0 0" }}>
+                            <line x1="0" y1={-hi.y + chartData.PAD_T} x2="0" y2={chartData.H - chartData.PAD_B - hi.y} stroke="rgba(255,255,255,0.2)" strokeWidth="1" strokeDasharray="4 4" />
+                            <circle cx="0" cy="0" r="6" fill="#111" stroke={theme.s} strokeWidth="2.5" filter="url(#neonGlowAssets)" />
+                        </g>
+                    )}
+                </svg>
+
+                {hi && (
+                    <div
+                        className="pointer-events-none absolute z-20 backdrop-blur-xl bg-black/80 border border-white/10 rounded-2xl p-4 shadow-2xl transition-all duration-75 ease-out"
+                        style={{
+                            left: Math.min(mx + 20, Math.max(wrapWidth - 200, 20)),
+                            top: Math.max(10, my - 60),
+                            minWidth: "160px"
+                        }}
+                    >
+                        <div className="text-white/50 text-xs font-semibold tracking-wider uppercase mb-1">
+                            {new Date(hi.date + "T00:00:00").toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" })}
+                        </div>
+                        <div className="text-2xl font-bold tracking-tight text-white mb-1">
+                            {money(hi.v)}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: theme.s }}>
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: theme.s }} />
+                            Patrimoine Net
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
@@ -332,7 +455,7 @@ export default function AssetsPage() {
         setAiLoading(true);
         setAiReport(null);
         try { const res = await getPatrimoineAIAnalysis(); setAiReport(res.report); }
-        catch (e: unknown) { setAiReport("Erreur lors de l'analyse."); }
+        catch { setAiReport("Erreur lors de l'analyse."); }
         finally { setAiLoading(false); }
     };
 

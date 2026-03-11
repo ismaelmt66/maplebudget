@@ -24,18 +24,7 @@ export default function QuickAddTransaction({ isOpen, onClose, onSuccess }: Quic
 
     const { addToast } = useToast();
 
-    // Load categories when the modal opens
-    useEffect(() => {
-        if (isOpen) {
-            loadCats();
-            // Reset form
-            setAmount("");
-            setNote("");
-            setDate(new Date().toISOString().slice(0, 10));
-        }
-    }, [isOpen]);
-
-    async function loadCats() {
+    const loadCats = React.useCallback(async () => {
         try {
             const c = await getCategories();
             setCats(c);
@@ -45,7 +34,18 @@ export default function QuickAddTransaction({ isOpen, onClose, onSuccess }: Quic
         } catch (err) {
             console.error("Failed to load categories for Quick Add", err);
         }
-    }
+    }, [categoryId]);
+
+    // Load categories when the modal opens
+    useEffect(() => {
+        if (isOpen) {
+            loadCats();
+            // Reset form
+            setAmount("");
+            setNote("");
+            setDate(new Date().toISOString().slice(0, 10));
+        }
+    }, [isOpen, loadCats]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -66,8 +66,8 @@ export default function QuickAddTransaction({ isOpen, onClose, onSuccess }: Quic
             addToast("Transaction ajoutée avec succès !", "success");
             onClose();
             if (onSuccess) onSuccess();
-        } catch (err: any) {
-            addToast(err?.message || "Erreur lors de l'ajout", "error");
+        } catch (err: unknown) {
+            addToast((err as Error)?.message || "Erreur lors de l'ajout", "error");
         } finally {
             setLoading(false);
         }

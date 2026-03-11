@@ -3,7 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, getCategories, getTransactions, Category, Transaction } from "@/lib/api";
+import { ApiError, getCategories, getTransactions, Category, Transaction, apiFetch } from "@/lib/api";
+import BankConnectButton from "@/components/BankConnectButton";
 
 // type d’aide utilisé uniquement dans ce fichier pour traiter les données de
 // transaction ; nous enrichissons le `Transaction` renvoyé par l’API avec des
@@ -28,7 +29,6 @@ type SeriesPoint = {
 // ceux dont on a besoin afin que la même logique reste cohérente partout.
 import { money, ymd, addDays, parseYMD } from "@/lib/format";
 import { DonutChart } from "@/components/DashboardDonut";
-
 const LOCALE = "fr-CA";
 
 // formate les nombres simples selon la locale (sans symbole monétaire)
@@ -74,7 +74,7 @@ function KPI({
           : { borderColor: "rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)", boxShadow: "0 0 30px rgba(255,255,255,0.02)" };
 
   return (
-    <div className="rounded-3xl p-6 relative overflow-hidden backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:brightness-110" style={toneStyle as any}>
+    <div className="rounded-3xl p-6 relative overflow-hidden backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:brightness-110" style={toneStyle as React.CSSProperties}>
       <div className="text-sm opacity-70 font-medium tracking-wide uppercase">{label}</div>
       <div className="text-3xl font-bold mt-2 tracking-tight">{value}</div>
       {hint && <div className="text-xs opacity-60 mt-3">{hint}</div>}
@@ -98,6 +98,8 @@ function TrendChart({
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [mx, setMx] = useState(0);
   const [my, setMy] = useState(0);
+  const [wrapWidth, setWrapWidth] = useState(1000);
+  const [wrapHeight, setWrapHeight] = useState(400);
 
   // Anti-flash: on met un petit délai avant de cacher
   const hideTimer = useRef<number | null>(null);
@@ -225,6 +227,11 @@ function TrendChart({
     clearHideTimer();
 
     const rect = e.currentTarget.getBoundingClientRect();
+    if (wrapRef.current) {
+      setWrapWidth(wrapRef.current.clientWidth);
+      setWrapHeight(wrapRef.current.clientHeight);
+    }
+
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
@@ -464,13 +471,13 @@ function TrendChart({
       </div>
 
       {/* Tooltip ultra-premium */}
-      {hoverIdx !== null && wrapRef.current && (
+      {hoverIdx !== null && wrapWidth > 0 && (
         <div
           className="absolute z-50 pointer-events-none transition-all duration-150 ease-out"
           style={{
             width: 280,
-            left: clamp(mx + 20, 12, wrapRef.current.clientWidth - 300),
-            top: clamp(my - 40, 12, wrapRef.current.clientHeight - 180),
+            left: clamp(mx + 20, 12, wrapWidth - 300),
+            top: clamp(my - 40, 12, wrapHeight - 180),
           }}
         >
           <div className="rounded-2xl border border-white/20 bg-black/60 backdrop-blur-xl shadow-[0_30px_60px_rgba(0,0,0,0.6)] p-5 relative overflow-hidden">
@@ -513,7 +520,7 @@ function TrendChart({
 
               {summary.income > 0 && (
                 <div className="mt-4 pt-3 border-t border-white/10 text-xs font-medium text-white/50 text-center">
-                  Taux d'épargne global estimé: <strong className="text-white">{summary.savingsRate.toFixed(1)}%</strong>
+                  Taux d&apos;épargne global estimé: <strong className="text-white">{summary.savingsRate.toFixed(1)}%</strong>
                 </div>
               )}
             </div>
@@ -524,12 +531,20 @@ function TrendChart({
   );
 }
 
+interface ForecastData {
+  run_rate: number;
+  projected_expenses: number;
+  current_income: number;
+  projected_net: number;
+  remaining_days: number;
+}
+
 export default function DashboardPage(): React.JSX.Element {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
   const [txs, setTxs] = useState<Tx[]>([]);
-  const [cats, setCats] = useState<Category[]>([]);
+  const [forecast, setForecast] = useState<ForecastData | null>(null);
 
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -537,47 +552,45 @@ export default function DashboardPage(): React.JSX.Element {
   const [mode, setMode] = useState<"net" | "income" | "expense">("net");
   const [activeDateFilter, setActiveDateFilter] = useState<number | "all">(30);
 
-  async function loadAll() {
+  const loadAll = React.useCallback(async () => {
     try {
       setErr(null);
       setLoading(true);
 
-      const [c, t] = await Promise.all([getCategories(), getTransactions()]);
-      setCats(c);
+      const [t, f] = await Promise.all([getTransactions(), apiFetch("/dashboard/ai-forecast").catch(() => null)]);
+      setForecast(f);
 
-      const normalized: Tx[] = t.map((x) => {
-        const amountNum = Number((x as any).amount);
-        const cat = (x as any).category as Category | undefined;
+      const normalized: Tx[] = t.map((x: Transaction) => {
+        const amountNum = Number(x.amount);
+        const cat = x.category as Category | undefined;
         return {
-          ...(x as any),
+          ...x,
           amountNum: Number.isFinite(amountNum) ? amountNum : 0,
           catName: cat?.name ?? "?",
-          catType: (cat?.type ?? "expense") as any,
+          catType: (cat?.type ?? "expense") as "income" | "expense",
         };
       });
 
       setTxs(normalized);
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof ApiError && e.status === 401) {
         setErr("Tu dois être connecté pour voir le dashboard.");
       } else {
-        setErr(e?.message ?? "Erreur");
+        setErr((e as Error)?.message ?? "Erreur");
       }
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   // Setup initial default date range
   useEffect(() => {
     setDateRange(30);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     loadAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadAll]);
 
   // Ajouter un écouteur global pour que l'ajout rapide actualise le Dashboard
   useEffect(() => {
@@ -652,7 +665,7 @@ export default function DashboardPage(): React.JSX.Element {
         type: t.catType,
         total: 0,
         count: 0,
-        budget_limit: (t.category as any)?.budget_limit
+        budget_limit: (t.category as Category | undefined)?.budget_limit ?? undefined
       };
       cur.total += t.amountNum;
       cur.count += 1;
@@ -663,7 +676,7 @@ export default function DashboardPage(): React.JSX.Element {
     return list;
   }, [filteredTxs]);
 
-  const recent = useMemo(() => filteredTxs.slice(0, 8), [filteredTxs]);
+
 
   return (
     <main className="space-y-10 pb-16">
@@ -681,6 +694,7 @@ export default function DashboardPage(): React.JSX.Element {
         </div>
 
         <div className="flex flex-wrap gap-3">
+          <BankConnectButton onConnectSuccess={loadAll} />
           <button className="px-5 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors" onClick={loadAll} disabled={loading}>
             {loading ? "Chargement…" : "Rafraîchir"}
           </button>
@@ -744,6 +758,64 @@ export default function DashboardPage(): React.JSX.Element {
         </div>
       </section>
 
+      {/* Cash Flow Forester Widget */}
+      {forecast && (
+        <section className="col-span-12 rounded-3xl p-8 relative overflow-hidden bg-gradient-to-br from-indigo-900/40 to-purple-900/40 border border-white/10 shadow-[0_0_40px_rgba(99,102,241,0.15)] animate-fade-in-up delay-[250ms]">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/20 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
+
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 backdrop-blur-md">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400">
+                  <path d="M22 11v1a10 10 0 1 1-9-10"></path>
+                  <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                  <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                  <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-200 to-purple-200 bg-clip-text text-transparent">Nexus IA : Prévision Fin de Mois</h2>
+                <p className="text-sm opacity-70 mt-1">Analyse du rythme de dépenses actuelles ({money(forecast.run_rate)}/jour)</p>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="p-6 bg-black/40 rounded-2xl border border-white/5 backdrop-blur-sm">
+                <div className="text-sm font-semibold opacity-60 uppercase tracking-wider">Dépenses Projetées</div>
+                <div className="text-3xl font-bold mt-2 text-white">{money(forecast.projected_expenses)}</div>
+                <div className="text-xs opacity-50 mt-1">D&apos;ici la fin du mois</div>
+              </div>
+
+              <div className="p-6 bg-black/40 rounded-2xl border border-white/5 backdrop-blur-sm">
+                <div className="text-sm font-semibold opacity-60 uppercase tracking-wider">Revenus Confirmés</div>
+                <div className="text-3xl font-bold mt-2 text-white">{money(forecast.current_income)}</div>
+                <div className="text-xs opacity-50 mt-1">Acquis sur le mois en cours</div>
+              </div>
+
+              <div className="p-6 rounded-2xl border backdrop-blur-sm scale-105" style={{
+                borderColor: forecast.projected_net >= 0 ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)",
+                background: forecast.projected_net >= 0 ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)",
+              }}>
+                <div className="text-sm font-semibold opacity-80 uppercase tracking-wider" style={{
+                  color: forecast.projected_net >= 0 ? "#86efac" : "#fca5a5"
+                }}>Solde Prévu (Cash-Flow)</div>
+                <div className="text-4xl font-bold mt-2 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]" style={{
+                  color: forecast.projected_net >= 0 ? "#4ade80" : "#f87171"
+                }}>
+                  {forecast.projected_net > 0 ? "+" : ""}{money(forecast.projected_net)}
+                </div>
+                <div className="text-xs opacity-70 mt-2 font-medium">
+                  {forecast.projected_net >= 0
+                    ? `Excellent rythme, continuez comme ça !`
+                    : `Attention, vous risquez le déficit d'ici ${forecast.remaining_days} jours.`}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Controls + chart */}
       <section className="grid gap-6 lg:grid-cols-12 animate-fade-in-up delay-300">
         <div className="lg:col-span-4 mb-card-soft p-6">
@@ -762,7 +834,7 @@ export default function DashboardPage(): React.JSX.Element {
 
             <label className="text-sm">
               Type
-              <select className="mb-input mt-1" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as any)}>
+              <select className="mb-input mt-1" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as "all" | "income" | "expense")}>
                 <option value="all">Tous</option>
                 <option value="income">Revenus</option>
                 <option value="expense">Dépenses</option>
@@ -771,7 +843,7 @@ export default function DashboardPage(): React.JSX.Element {
 
             <label className="text-sm">
               Graph focus
-              <select className="mb-input mt-1" value={mode} onChange={(e) => setMode(e.target.value as any)}>
+              <select className="mb-input mt-1" value={mode} onChange={(e) => setMode(e.target.value as "net" | "income" | "expense")}>
                 <option value="net">Net</option>
                 <option value="income">Revenus</option>
                 <option value="expense">Dépenses</option>

@@ -5,9 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { registerUser, loginUser } from "@/lib/api";
 import { setToken } from "@/lib/auth";
-import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Card, CardBody } from "@/components/ui/Card";
 
 export default function RegisterPage() {
   const r = useRouter();
@@ -29,8 +27,8 @@ export default function RegisterPage() {
       const res = await loginUser({ email, password });
       setToken(res.access_token);
       r.push("/dashboard");
-    } catch (e: any) {
-      setErr(e?.message ?? "Erreur");
+    } catch (e: unknown) {
+      setErr((e as Error)?.message ?? "Erreur");
     } finally {
       setLoading(false);
     }
@@ -54,7 +52,7 @@ export default function RegisterPage() {
               </div>
 
               <h2 className="text-4xl font-bold mt-8 leading-tight tracking-tight">
-                L'excellence <br />
+                L&apos;excellence <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Financière</span>.
               </h2>
 

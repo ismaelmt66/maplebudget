@@ -59,7 +59,7 @@ export default function CoachPage() {
                 isTypingEffect: true // Active l'animation de frappe pour les nouveaux messages
             };
             setMessages(prev => [...prev, aiMsg]);
-        } catch (err: any) {
+        } catch (err: unknown) {
             if (err instanceof ApiError && err.status === 401) {
                 router.push("/login");
             } else {
@@ -128,7 +128,7 @@ export default function CoachPage() {
                         Coach IA
                     </h1>
                     <p className="text-sm text-white/50 mt-1">
-                        Moteur d'Analyse Heuristique Avancé
+                        Moteur d&apos;Analyse Heuristique Avancé
                     </p>
                 </div>
 

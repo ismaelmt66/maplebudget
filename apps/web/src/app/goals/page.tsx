@@ -18,6 +18,7 @@ export default function GoalsPage(): React.JSX.Element {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+
   // formulaire de création
   const [title, setTitle] = useState("Voiture");
   const [targetAmount, setTargetAmount] = useState(8000);
@@ -48,13 +49,14 @@ export default function GoalsPage(): React.JSX.Element {
       const next: Record<number, GoalPlan> = {};
       for (const [id, p] of pairs) if (p) next[id] = p;
       setPlans(next);
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof ApiError && e.status === 401) {
         setErr("Tu dois être connecté pour gérer les objectifs.");
       } else {
-        setErr(e?.message ?? "Erreur");
+        setErr((e as Error)?.message ?? "Erreur");
       }
     } finally {
+      setErr(null);
       setLoading(false);
     }
   }
@@ -82,8 +84,8 @@ export default function GoalsPage(): React.JSX.Element {
         target_date: targetDate,
       });
       await load();
-    } catch (e: any) {
-      setErr(e?.message ?? "Erreur");
+    } catch (e: unknown) {
+      setErr((e as Error)?.message ?? "Erreur");
     }
   }
 
@@ -99,8 +101,8 @@ export default function GoalsPage(): React.JSX.Element {
       await updateGoal(g.id, { current_amount: Number(g.current_amount) + dep });
       setDepositByGoal((m) => ({ ...m, [g.id]: 0 }));
       await load();
-    } catch (e: any) {
-      setErr(e?.message ?? "Erreur");
+    } catch (e: unknown) {
+      setErr((e as Error)?.message ?? "Erreur");
     }
   }
 
@@ -113,8 +115,8 @@ export default function GoalsPage(): React.JSX.Element {
       setErr(null);
       await deleteGoal(goalId);
       await load();
-    } catch (e: any) {
-      setErr(e?.message ?? "Erreur");
+    } catch (e: unknown) {
+      setErr((e as Error)?.message ?? "Erreur");
     }
   }
 
@@ -176,7 +178,7 @@ export default function GoalsPage(): React.JSX.Element {
                 <input className="w-full bg-black/40 border border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20 py-3 px-4 rounded-xl mt-2" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
               </label>
 
-              <button className="w-full mt-2 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold shadow-[0_0_20px_rgba(99,102,241,0.3)] transition-all transform hover:-translate-y-0.5" onClick={onCreate}>Créer l'objectif</button>
+              <button className="w-full mt-2 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold shadow-[0_0_20px_rgba(99,102,241,0.3)] transition-all transform hover:-translate-y-0.5" onClick={onCreate}>Créer l&apos;objectif</button>
             </div>
           </div>
         </div>
@@ -252,7 +254,7 @@ export default function GoalsPage(): React.JSX.Element {
               );
             })}
 
-            {!goals.length && <div className="text-sm opacity-60 font-medium py-10 text-center italic">Aucun objectif d'épargne. Créez-en un pour commencer à investir dans votre futur.</div>}
+            {!goals.length && <div className="text-sm opacity-60 font-medium py-10 text-center italic">Aucun objectif d&apos;épargne. Créez-en un pour commencer à investir dans votre futur.</div>}
           </div>
         </div>
       </section>

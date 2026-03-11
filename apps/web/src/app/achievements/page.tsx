@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch, ApiError, Achievement, getAchievements } from "@/lib/api";
+import { ApiError, Achievement, getAchievements } from "@/lib/api";
 
 export default function AchievementsPage() {
     const router = useRouter();
@@ -17,11 +17,11 @@ export default function AchievementsPage() {
                 setErr(null);
                 const data = await getAchievements();
                 setAchievements(data);
-            } catch (e: any) {
+            } catch (e: unknown) {
                 if (e instanceof ApiError && e.status === 401) {
                     router.push("/login");
                 } else {
-                    setErr(e.message || "Failed to load achievements");
+                    setErr((e as Error).message || "Failed to load achievements");
                 }
             } finally {
                 setLoading(false);

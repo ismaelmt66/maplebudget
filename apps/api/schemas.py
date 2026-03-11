@@ -58,6 +58,8 @@ class TransactionCreate(BaseModel):
     date: str
     note: Optional[str] = None
     category_id: int
+    external_id: Optional[str] = None
+    bank_connection_id: Optional[int] = None
 
 
 class TransactionUpdate(BaseModel):
@@ -65,6 +67,7 @@ class TransactionUpdate(BaseModel):
     date: Optional[str] = None
     note: Optional[str] = None
     category_id: Optional[int] = None
+    external_id: Optional[str] = None
 
 
 class TransactionOut(BaseModel):
@@ -73,6 +76,8 @@ class TransactionOut(BaseModel):
     date: str
     note: Optional[str] = None
     category: CategoryOut
+    external_id: Optional[str] = None
+    bank_connection_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -150,6 +155,22 @@ class AssetHistoryOut(BaseModel):
     asset_id: int
     date: str
     balance: float
+
+    class Config:
+        from_attributes = True
+
+# --- Connexions Bancaires ---
+
+class BankConnectionCreate(BaseModel):
+    institution_name: str
+    access_token: str
+    item_id: str
+    cursor: Optional[str] = None
+
+class BankConnectionOut(BaseModel):
+    id: int
+    institution_name: str
+    item_id: str
 
     class Config:
         from_attributes = True

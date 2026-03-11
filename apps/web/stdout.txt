@@ -2,81 +2,138 @@
 > nexledger-web@2.0.0 dev
 > next dev
 
-⚠ Port 3000 is in use by process 37696, using available port 3001 instead.
 ▲ Next.js 16.1.6 (Turbopack)
-- Local:         http://localhost:3001
-- Network:       http://132.213.176.116:3001
+- Local:         http://localhost:3000
+- Network:       http://132.213.96.148:3000
 - Environments: .env.local
 
 ✓ Starting...
-✓ Ready in 2.4s
-
-thread 'tokio-runtime-worker' (24276) panicked at turbopack\crates\turbo-persistence\src\static_sorted_file.rs:412:31:
-range end index 805306369 out of range for slice of length 3055
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
------
-[1m[31mFATAL[39m[0m: An unexpected Turbopack error occurred. A panic log has been written to C:\Users\takou\AppData\Local\Temp\next-panic-33c31660868c1e03c9f24b9dd642b965.log.
-
-To help make Turbopack better, report this error by clicking here: https://github.com/vercel/next.js/discussions/new?category=turbopack-error-report&title=Turbopack%20Error%3A%20range%20end%20index%20805306369%20out%20of%20range%20for%20slice%20of%20length%203055&body=Turbopack%20version%3A%20%6023c46498%60%0ANext.js%20version%3A%20%600.0.0%60%0A%0AError%20message%3A%0A%60%60%60%0ATurbopack%20Error%3A%20range%20end%20index%20805306369%20out%20of%20range%20for%20slice%20of%20length%203055%0A%60%60%60&labels=Turbopack,Turbopack%20Panic%20Backtrace
------
-
-
-thread 'tokio-runtime-worker' (30528) panicked at turbopack\crates\turbo-persistence\src\static_sorted_file.rs:412:31:
-range end index 805306369 out of range for slice of length 3055
-⨯ Error [TurbopackInternalError]: range end index 805306369 out of range for slice of length 3055
-    at <unknown> (TurbopackInternalError: range end index 805306369 out of range for slice of length 3055) {
-  location: 'turbopack\\crates\\turbo-persistence\\src\\static_sorted_file.rs:412:31'
-}
-
-thread 'tokio-runtime-worker' (468) panicked at turbopack\crates\turbo-persistence\src\static_sorted_file.rs:412:31:
-range end index 805306369 out of range for slice of length 3055
-Error [TurbopackInternalError]: range end index 805306369 out of range for slice of length 3055
-    at <unknown> (TurbopackInternalError: range end index 805306369 out of range for slice of length 3055) {
-  location: 'turbopack\\crates\\turbo-persistence\\src\\static_sorted_file.rs:412:31'
-}
-
-thread 'tokio-runtime-worker' (34324) panicked at turbopack\crates\turbo-persistence\src\static_sorted_file.rs:412:31:
-range end index 805306369 out of range for slice of length 3055
-⨯ Error [TurbopackInternalError]: range end index 805306369 out of range for slice of length 3055
-    at <unknown> (TurbopackInternalError: range end index 805306369 out of range for slice of length 3055) {
-  location: 'turbopack\\crates\\turbo-persistence\\src\\static_sorted_file.rs:412:31'
-}
-
-thread 'tokio-runtime-worker' (34324) panicked at turbopack\crates\turbo-persistence\src\static_sorted_file.rs:412:31:
-range end index 805306369 out of range for slice of length 3055
-Error [TurbopackInternalError]: range end index 805306369 out of range for slice of length 3055
-    at <unknown> (TurbopackInternalError: range end index 805306369 out of range for slice of length 3055) {
-  location: 'turbopack\\crates\\turbo-persistence\\src\\static_sorted_file.rs:412:31'
-}
- is allowed at a time)
-✓ Compiled in 558ms
-Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
-✓ Compiled in 112ms
-Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
- GET /analytics 200 in 1662ms (compile: 1298ms, render: 364ms)
-Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
-Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
-Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
-Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
-Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
-Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
-Persisting failed: Another write batch or compaction is alrea✓ Compiled in 2.1s
- GET /login 200 in 1990ms (compile: 1210ms, render: 780ms)
- GET /analytics 200 in 1926ms (compile: 1610ms, render: 317ms)
- GET /login 200 in 200ms (compile: 44ms, render: 155ms)
- GET /analytics 200 in 190ms (compile: 88ms, render: 102ms)
- GET /login 200 in 78ms (compile: 5ms, render: 73ms)
- GET /analytics 200 in 55ms (compile: 7ms, render: 48ms)
- GET /login 200 in 173ms (compile: 7ms, render: 165ms)
- GET /analytics 200 in 176ms (compile: 52ms, render: 124ms)
- GET /login 200 in 130ms (compile: 4ms, render: 126ms)
- GET /analytics 200 in 130ms (compile: 23ms, render: 107ms)
- GET /login 200 in 114ms (compile: 4ms, render: 110ms)
- GET /analytics 200 in 116ms (compile: 27ms, render: 89ms)
- GET /login 200 in 103ms (compile: 6ms, render: 97ms)
- GET /login 200 in 46ms (compile: 6ms, render: 40ms)
- GET /analytics 200 in 82ms (compile: 5ms, render: 76ms)
- GET /analytics 200 in 47ms (compile: 25ms, render: 22ms)
-Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
-Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Ready in 2s
+ GET / 200 in 1987ms (compile: 1508ms, render: 478ms)
+✓ Compiled in 313ms
+ GET / 200 in 825ms (compile: 386ms, render: 439ms)
+✓ Compiled in 329ms
+✓ Compiled in 180ms
+✓ Compiled in 100ms
+ GET / 200 in 1754ms (compile: 1052ms, render: 702ms)
+ GET / 200 in 97ms (compile: 22ms, render: 75ms)
+✓ Compiled in 871ms
+ GET / 200 in 2.0s (compile: 1371ms, render: 650ms)
+✓ Compiled in 231ms
+ GET /login 200 in 1828ms (compile: 1488ms, render: 340ms)
+○ Compiling /dashboard ...
+ GET /dashboard 200 in 3.8s (compile: 3.7s, render: 51ms)
+ GET /dashboard 200 in 632ms (compile: 10ms, render: 622ms)
+○ Compiling /assets ...
+ GET /assets 200 in 3.7s (compile: 3.6s, render: 58ms)
+○ Compiling /analytics ...
+ GET /analytics 200 in 9.0s (compile: 8.6s, render: 387ms)
+ GET /analytics 200 in 178ms (compile: 18ms, render: 160ms)
+ GET /analytics 200 in 149ms (compile: 18ms, render: 131ms)
+ GET /analytics 200 in 93ms (compile: 11ms, render: 82ms)
+ GET /analytics 200 in 49ms (compile: 5ms, render: 44ms)
+ GET /coach 200 in 2.8s (compile: 2.7s, render: 97ms)
+✓ Compiled in 787ms
+ GET /dashboard 200 in 1214ms (compile: 876ms, render: 338ms)
+ GET /coach 200 in 239ms (compile: 156ms, render: 83ms)
+ GET /dashboard 200 in 62ms (compile: 11ms, render: 50ms)
+✓ Compiled in 531ms
+ GET /assets 200 in 1875ms (compile: 1565ms, render: 311ms)
+ GET /analytics 200 in 1012ms (compile: 855ms, render: 158ms)
+ GET / 200 in 333ms (compile: 262ms, render: 72ms)
+ GET /dashboard 200 in 333ms (compile: 254ms, render: 79ms)
+ GET /dashboard 200 in 667ms (compile: 26ms, render: 642ms)
+✓ Compiled in 2.5s
+✓ Compiled in 720ms
+✓ Compiled in 1167ms
+✓ Compiled in 721ms
+○ Compiling /transactions ...
+ GET /transactions 200 in 8.9s (compile: 8.5s, render: 449ms)
+ GET /dashboard 200 in 1686ms (compile: 1264ms, render: 422ms)
+ GET /dashboard 200 in 138ms (compile: 29ms, render: 109ms)
+ GET /assets 200 in 3.5s (compile: 2.5s, render: 1078ms)
+ GET /assets 200 in 208ms (compile: 25ms, render: 183ms)
+✓ Compiled in 1115ms
+✓ Compiled in 1695ms
+ GET /assets 200 in 921ms (compile: 702ms, render: 218ms)
+ GET /assets 200 in 188ms (compile: 7ms, render: 181ms)
+ GET /assets 200 in 228ms (compile: 6ms, render: 222ms)
+ GET /assets 200 in 226ms (compile: 14ms, render: 212ms)
+ GET /assets 200 in 184ms (compile: 11ms, render: 174ms)
+ GET /assets 200 in 141ms (compile: 13ms, render: 127ms)
+ GET /assets 200 in 334ms (compile: 150ms, render: 184ms)
+ GET /assets 200 in 137ms (compile: 8ms, render: 130ms)
+ GET /assets 200 in 164ms (compile: 7ms, render: 157ms)
+ GET /assets 200 in 180ms (compile: 6ms, render: 174ms)
+ GET /assets 200 in 149ms (compile: 7ms, render: 142ms)
+ GET /assets 200 in 106ms (compile: 6ms, render: 100ms)
+ GET /assets 200 in 72ms (compile: 7ms, render: 65ms)
+ GET /assets 200 in 245ms (compile: 93ms, render: 152ms)
+ GET /assets 200 in 143ms (compile: 8ms, render: 135ms)
+ GET /assets 200 in 109ms (compile: 6ms, render: 103ms)
+ GET /assets 200 in 120ms (compile: 4ms, render: 116ms)
+ GET /assets 200 in 130ms (compile: 5ms, render: 124ms)
+ GET /assets 200 in 171ms (compile: 8ms, render: 163ms)
+ GET /assets 200 in 136ms (compile: 10ms, render: 126ms)
+ GET /assets 200 in 93ms (compile: 13ms, render: 80ms)
+ GET /assets 200 in 52ms (compile: 5ms, render: 47ms)
+ GET /assets 200 in 210ms (compile: 69ms, render: 140ms)
+ GET /assets 200 in 112ms (compile: 6ms, render: 106ms)
+ GET /assets 200 in 153ms (compile: 5ms, render: 148ms)
+ GET /assets 200 in 161ms (compile: 6ms, render: 155ms)
+ GET /assets 200 in 195ms (compile: 6ms, render: 189ms)
+ GET /assets 200 in 152ms (compile: 5ms, render: 146ms)
+ GET /assets 200 in 129ms (compile: 7ms, render: 122ms)
+ GET /assets 200 in 92ms (compile: 26ms, render: 66ms)
+ GET /dashboard 200 in 2.0s (compile: 1565ms, render: 440ms)
+✓ Compiled in 1583ms
+ GET /dashboard 200 in 3.4s (compile: 1870ms, render: 1525ms)
+ GET /dashboard 200 in 180ms (compile: 41ms, render: 139ms)
+ GET /dashboard 200 in 1525ms (compile: 523ms, render: 1002ms)
+ GET /dashboard 200 in 1610ms (compile: 501ms, render: 1109ms)
+ GET /login 200 in 719ms (compile: 612ms, render: 106ms)
+ GET /dashboard 200 in 128ms (compile: 17ms, render: 111ms)
+✓ Compiled in 2.4s
+ GET /dashboard 200 in 1685ms (compile: 496ms, render: 1189ms)
+ GET /login 200 in 703ms (compile: 84ms, render: 619ms)
+ GET /dashboard 200 in 107ms (compile: 22ms, render: 85ms)
+ GET /dashboard 200 in 326ms (compile: 53ms, render: 273ms)
+ GET /transactions 200 in 693ms (compile: 624ms, render: 69ms)
+ GET /dashboard 200 in 35ms (compile: 5ms, render: 30ms)
+○ Compiling /categories ...
+ GET /categories 200 in 6.7s (compile: 6.6s, render: 110ms)
+ GET /categories 200 in 64ms (compile: 16ms, render: 48ms)
+○ Compiling /subscriptions ...
+ GET /subscriptions 200 in 4.8s (compile: 4.5s, render: 276ms)
+ GET /subscriptions 200 in 212ms (compile: 10ms, render: 202ms)
+ GET /subscriptions 200 in 121ms (compile: 29ms, render: 92ms)
+ GET /subscriptions 200 in 51ms (compile: 6ms, render: 46ms)
+ GET /subscriptions 200 in 80ms (compile: 14ms, render: 66ms)
+ GET /coach 200 in 541ms (compile: 318ms, render: 222ms)
+ GET /analytics 200 in 191ms (compile: 137ms, render: 55ms)
+ GET /achievements 200 in 1355ms (compile: 1199ms, render: 155ms)
+ GET /analytics 200 in 117ms (compile: 15ms, render: 102ms)
+ GET /analytics 200 in 35ms (compile: 5ms, render: 30ms)
+ GET /analytics 200 in 55ms (compile: 8ms, render: 47ms)
+ GET /dashboard 200 in 66ms (compile: 17ms, render: 49ms)
+ GET /dashboard 200 in 3.9s (compile: 1245ms, render: 2.6s)
+ GET /login 200 in 2.6s (compile: 1032ms, render: 1589ms)
+ GET /login 200 in 378ms (compile: 60ms, render: 318ms)
+ GET /dashboard 200 in 1368ms (compile: 418ms, render: 950ms)
+ GET /dashboard 200 in 1077ms (compile: 125ms, render: 952ms)
+ GET /dashboard 200 in 73ms (compile: 7ms, render: 66ms)
+ GET /transactions 200 in 224ms (compile: 82ms, render: 143ms)
+ GET /dashboard 200 in 52ms (compile: 16ms, render: 35ms)
+ GET /dashboard 200 in 108ms (compile: 8ms, render: 100ms)
+ GET /coach 200 in 67ms (compile: 34ms, render: 33ms)
+○ Compiling /goals ...
+ GET /goals 200 in 11.3s (compile: 10.7s, render: 614ms)
+ GET /goals 200 in 181ms (compile: 47ms, render: 134ms)
+ GET /goals 200 in 90ms (compile: 11ms, render: 79ms)
+ GET /goals 200 in 204ms (compile: 47ms, render: 157ms)
+ GET /goals 200 in 108ms (compile: 10ms, render: 98ms)
+ GET /goals 200 in 52ms (compile: 7ms, render: 45ms)
+ GET /goals 200 in 981ms (compile: 15ms, render: 966ms)
+ GET /goals 200 in 131ms (compile: 14ms, render: 116ms)
+ GET /goals 200 in 130ms (compile: 9ms, render: 121ms)
+ GET /dashboard 200 in 3.8s (compile: 1632ms, render: 2.2s)

@@ -35,8 +35,7 @@ export function DonutChart({
 
     // Calculate SVG stroke-dasharray and stroke-dashoffset for each segment
     const segments = useMemo(() => {
-        let currentOffset = 0;
-        return data.map((item) => {
+        return data.reduce((acc, item) => {
             const percentage = total > 0 ? item.value / total : 0;
             const strokeLength = percentage * circumference;
 
@@ -44,12 +43,13 @@ export function DonutChart({
                 ...item,
                 percentage,
                 strokeDasharray: `${Math.max(0, strokeLength - 4)} ${circumference}`, // -4 creates a nice gap between slices
-                strokeDashoffset: -currentOffset,
+                strokeDashoffset: -acc.currentOffset,
             };
 
-            currentOffset += strokeLength;
-            return segment;
-        });
+            acc.list.push(segment);
+            acc.currentOffset += strokeLength;
+            return acc;
+        }, { list: [] as (DonutData & { percentage: number; strokeDasharray: string; strokeDashoffset: number })[], currentOffset: 0 }).list;
     }, [data, total, circumference]);
 
     if (total === 0) {

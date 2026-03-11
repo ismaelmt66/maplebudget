@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """Application FastAPI pour NexLedger.
 
 Ce module définit tous les endpoints HTTP utilisés par le front-end. La logique
@@ -10,10 +11,9 @@ load_dotenv()
 
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from jose import JWTError
 from typing import Optional, List
 from datetime import date as dt_date, datetime
 from collections import defaultdict
@@ -21,9 +21,9 @@ from collections import defaultdict
 from db import get_db
 import models
 import schemas
-from auth import hash_password, verify_password, create_access_token, decode_token
+from auth import hash_password, verify_password, create_access_token, get_current_user
 
-app = FastAPI(title="NexLedger API", version="0.2.0")
+app = FastAPI(title="NexLedger API", version="0.4.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,32 +33,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
-
-
-@app.get("/health")
-def health():
-    """Vérification basique ; utile pour les load‑balancers ou l’uptime."""
-    return {"status": "ok"}
-
-
 # ---------- Aides d’authentification ----------
+# `get_current_user` est maintenant importé de `auth.py` pour éviter les dépendances circulaires
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> models.User:
-    """Extrait et valide l’utilisateur courant à partir du jeton bearer.
-
-    Lève une erreur 401 si le jeton est invalide ou si l’utilisateur n’existe pas.
-    """
-    try:
-        sub = decode_token(token)  # sub = identifiant utilisateur (chaîne)
-        user_id = int(sub)
-    except (JWTError, ValueError):
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
 
 
 # ---------- Routes d'auth ----------
@@ -357,6 +334,15 @@ def dashboard(
         tx_count=int(tx_count),
         by_category=by_category,
     )
+
+@app.get("/dashboard/ai-forecast")
+def dashboard_ai_forecast(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    from services.ai_engine import FinancialAIEngine
+    engine = FinancialAIEngine(db=db, user_id=current.id)
+    return engine.predict_cashflow()
 
 
 # ---------- Analytics (protected) ----------
@@ -685,7 +671,7 @@ def simulate_allocation(
     """Simule la répartition d'un revenu sans modifier les données."""
     rules = db.query(models.AllocationRule).filter(
         models.AllocationRule.user_id == current.id,
-        models.AllocationRule.is_active == True,
+        models.AllocationRule.is_active,
     ).all()
     results = []
     for r in rules:
@@ -710,7 +696,7 @@ def apply_allocation(
     from datetime import date as dt_today
     rules = db.query(models.AllocationRule).filter(
         models.AllocationRule.user_id == current.id,
-        models.AllocationRule.is_active == True,
+        models.AllocationRule.is_active,
     ).all()
     applied = []
     today_str = dt_today.today().isoformat()

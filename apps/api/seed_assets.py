@@ -36,7 +36,6 @@ def seed_assets(email: str):
 
             # Generate history backwards for 6 months (one point per 7 days approx)
             current_balance = float(data["balance"])
-            history_pts = []
             
             # Start 6 months ago (approx 180 days)
             days_back = 180
@@ -55,7 +54,8 @@ def seed_assets(email: str):
                     current_balance *= random.uniform(0.90, 1.15) # High volatility
                 
                 # Ensure no negative balances for savings/crypto for simplicity
-                if current_balance < 0: current_balance = 0
+                if current_balance < 0:
+                    current_balance = 0
                 
                 h = AssetHistory(asset_id=a.id, date=d.strftime("%Y-%m-%d"), balance=round(current_balance, 2))
                 db.add(h)

@@ -275,7 +275,7 @@ def seed(email: str):
 
         print(f"\n🎉 Seed Phase 12 terminé pour {email} !")
         print(f"   Patrimoine net estimé: ~{185000 + 34200 + 18750 + 11450 + 5820 - 142000:,.0f} $")
-        print(f"   Ouvre http://localhost:3001/assets pour voir le résultat !")
+        print("   Ouvre http://localhost:3001/assets pour voir le résultat !")
 
     finally:
         db.close()

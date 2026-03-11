@@ -55,7 +55,7 @@ export default function HomePage() {
 
             <p className="text-lg opacity-70 max-w-xl leading-relaxed">
               Vos budgets, analyses, objectifs et transactions réunis dans une interface
-              minimaliste de classe mondiale. Reprenez le contrôle dès aujourd'hui sans complexité.
+              minimaliste de classe mondiale. Reprenez le contrôle dès aujourd&apos;hui sans complexité.
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-4">
@@ -108,11 +108,11 @@ export default function HomePage() {
                   {/* KPI Row */}
                   <div className="grid grid-cols-2 gap-4 relative z-10">
                     <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                      <div className="text-xs text-white/50 mb-1">Revenus d'Avril</div>
+                      <div className="text-xs text-white/50 mb-1">Revenus d&apos;Avril</div>
                       <div className="text-2xl font-bold text-green-400">+ 4 250 $</div>
                     </div>
                     <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                      <div className="text-xs text-white/50 mb-1">Dépenses d'Avril</div>
+                      <div className="text-xs text-white/50 mb-1">Dépenses d&apos;Avril</div>
                       <div className="text-2xl font-bold text-red-400">- 1 120 $</div>
                     </div>
                   </div>
@@ -135,7 +135,7 @@ export default function HomePage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative">
         <div className="text-center mb-16 animate-fade-in-up delay-100">
           <h2 className="text-3xl md:text-4xl font-bold">Un écosystème taillé pour la <span className="text-blue-400">performance</span>.</h2>
-          <p className="mt-4 opacity-70 max-w-2xl mx-auto">Chaque pixel a été pensé pour vous faire gagner du temps et vous offrir une visibilité instantanée sur l'état de vos finances.</p>
+          <p className="mt-4 opacity-70 max-w-2xl mx-auto">Chaque pixel a été pensé pour vous faire gagner du temps et vous offrir une visibilité instantanée sur l&apos;état de vos finances.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px]">
@@ -166,7 +166,7 @@ export default function HomePage() {
                 <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
               </div>
               <h3 className="text-xl font-bold mb-2">Ajout Éclair</h3>
-              <p className="opacity-70 text-sm">Raccourci global pour enregistrer une transaction en moins de 3 secondes d'où que vous soyez.</p>
+              <p className="opacity-70 text-sm">Raccourci global pour enregistrer une transaction en moins de 3 secondes d&apos;où que vous soyez.</p>
             </div>
           </div>
 
@@ -195,7 +195,7 @@ export default function HomePage() {
 
             <div className="relative z-20 p-8 h-full flex flex-col justify-center">
               <h3 className="text-2xl font-bold mb-2">Sécurité Bancaire (JWT)</h3>
-              <p className="opacity-70 max-w-md">L'architecture repose sur FastAPI avec authentification robuste par token JWT et bases de données isolées.</p>
+              <p className="opacity-70 max-w-md">L&apos;architecture repose sur FastAPI avec authentification robuste par token JWT et bases de données isolées.</p>
             </div>
           </div>
 

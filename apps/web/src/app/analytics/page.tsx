@@ -23,11 +23,11 @@ export default function AnalyticsPage() {
                 ]);
                 setTxs(data as Transaction[]);
                 setSubs(subsData);
-            } catch (e: any) {
+            } catch (e: unknown) {
                 if (e instanceof ApiError && e.status === 401) {
                     router.push("/login");
                 } else {
-                    setErr(e?.message ?? "Erreur de chargement");
+                    setErr((e as Error)?.message ?? "Erreur de chargement");
                 }
             } finally {
                 setLoading(false);
@@ -99,7 +99,7 @@ export default function AnalyticsPage() {
                 <>
                     {monthlyData.length === 0 ? (
                         <div className="text-sm opacity-60 py-12 text-center rounded-3xl bg-black/40 border border-white/5 italic">
-                            Pas de données suffisantes pour l'analyse. Ajoute des transactions.
+                            Pas de données suffisantes pour l&apos;analyse. Ajoute des transactions.
                         </div>
                     ) : (
                         <section className="rounded-3xl bg-black/40 backdrop-blur-md border border-white/5 shadow-xl p-8 animate-fade-in-up delay-100">

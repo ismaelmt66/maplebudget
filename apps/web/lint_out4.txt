@@ -1,0 +1,19 @@
+
+> nexledger-web@2.0.0 lint
+> eslint
+
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\app\dashboard\page.tsx
+  6:20  warning  'getCategories' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\app\goals\page.tsx
+  19:10  warning  'loading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\app\transactions\page.tsx
+  26:10  warning  'loading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\takou\Documents\maplebudget\apps\web\src\components\ui\Toast.tsx
+  3:78  warning  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 4 problems (0 errors, 4 warnings)
+
