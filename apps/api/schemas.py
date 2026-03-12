@@ -17,9 +17,31 @@ class UserCreate(BaseModel):
 class UserOut(BaseModel):
     id: int
     email: EmailStr
+    is_onboarded: bool = False
 
     class Config:
         from_attributes = True
+
+
+# --- Onboarding ---
+
+class DefaultCategory(BaseModel):
+    name: str
+    icon: str
+
+
+class OnboardingCategoryItem(BaseModel):
+    name: str
+    budget_limit: Optional[float] = None
+
+
+class OnboardingSetupRequest(BaseModel):
+    categories: List[OnboardingCategoryItem]
+
+
+class OnboardingSetupResponse(BaseModel):
+    created: int
+    categories: List["CategoryOut"]
 
 
 class TokenOut(BaseModel):

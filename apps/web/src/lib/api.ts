@@ -457,3 +457,33 @@ export async function updateRecurringTransaction(
 export async function deleteRecurringTransaction(id: number): Promise<{ deleted: boolean; id: number }> {
   return apiFetch(`/transactions/recurring/${id}`, { method: "DELETE" }) as Promise<{ deleted: boolean; id: number }>;
 }
+
+/* ---------- Onboarding ---------- */
+
+export type DefaultCategory = {
+  name: string;
+  icon: string;
+};
+
+export async function getOnboardingStatus(): Promise<{ is_onboarded: boolean }> {
+  return apiFetch("/users/onboarding-status") as Promise<{ is_onboarded: boolean }>;
+}
+
+export async function completeOnboarding(): Promise<{ message: string; is_onboarded: boolean }> {
+  return apiFetch("/users/onboarding-complete", { method: "PATCH" }) as Promise<{ message: string; is_onboarded: boolean }>;
+}
+
+export async function getDefaultCategories(): Promise<DefaultCategory[]> {
+  const res = await fetch(`${API_BASE}/onboarding/default-categories`, { cache: "no-store" });
+  if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function setupCategories(
+  categories: { name: string; budget_limit?: number | null }[]
+): Promise<{ created: number; categories: Category[] }> {
+  return apiFetch("/onboarding/setup-categories", {
+    method: "POST",
+    body: JSON.stringify({ categories }),
+  }) as Promise<{ created: number; categories: Category[] }>;
+}

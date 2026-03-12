@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { loginUser } from "@/lib/api";
+import { loginUser, getOnboardingStatus } from "@/lib/api";
 import { setToken } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -23,7 +23,8 @@ export default function LoginPage() {
       setLoading(true);
       const res = await loginUser({ email, password });
       setToken(res.access_token);
-      r.push("/dashboard");
+      const status = await getOnboardingStatus();
+      r.push(status.is_onboarded ? "/dashboard" : "/onboarding");
     } catch (e: any) {
       setErr(e?.message ?? "Erreur");
     } finally {

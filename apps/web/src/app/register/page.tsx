@@ -28,7 +28,7 @@ export default function RegisterPage() {
       await registerUser({ email, password });
       const res = await loginUser({ email, password });
       setToken(res.access_token);
-      r.push("/dashboard");
+      r.push("/onboarding");
     } catch (e: any) {
       setErr(e?.message ?? "Erreur");
     } finally {
