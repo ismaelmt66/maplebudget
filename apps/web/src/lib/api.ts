@@ -365,7 +365,41 @@ export async function getPatrimoineAIAnalysis(): Promise<{ report: string }> {
   return apiFetch("/assets/ai-analysis") as Promise<{ report: string }>;
 }
 
-/* ---------- Recurring Transactions ---------- */
+/* ---------- Budget Alerts ---------- */
+
+export type BudgetAlert = {
+  category_id: number;
+  category_name: string;
+  budget_limit: number;
+  spent: number;
+  remaining: number;
+  percentage: number;
+  status: "safe" | "warning" | "danger" | "exceeded";
+};
+
+export type BudgetAlertResponse = {
+  alerts: BudgetAlert[];
+  total_budget: number;
+  total_spent: number;
+  month: string;
+};
+
+export type BudgetSummary = {
+  total_budget: number;
+  total_spent: number;
+  remaining: number;
+  over_budget_count: number;
+  warning_count: number;
+  month: string;
+};
+
+export async function getBudgetAlerts(): Promise<BudgetAlertResponse> {
+  return apiFetch("/budget/alerts") as Promise<BudgetAlertResponse>;
+}
+
+export async function getBudgetSummary(): Promise<BudgetSummary> {
+  return apiFetch("/budget/summary") as Promise<BudgetSummary>;
+}
 
 export type RecurringTransaction = {
   id: number;

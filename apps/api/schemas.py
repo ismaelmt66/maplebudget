@@ -239,6 +239,34 @@ class AllocationApplyRequest(BaseModel):
     income_category_id: Optional[int] = None  # Pour filtrer les règles par catégorie source
 
 
+# --- Budget Alerts ---
+
+class BudgetAlert(BaseModel):
+    category_id: int
+    category_name: str
+    budget_limit: float
+    spent: float
+    remaining: float
+    percentage: float  # 0-100+
+    status: str  # safe/warning/danger/exceeded
+
+
+class BudgetAlertResponse(BaseModel):
+    alerts: List[BudgetAlert]
+    total_budget: float
+    total_spent: float
+    month: str  # "2026-03"
+
+
+class BudgetSummary(BaseModel):
+    total_budget: float
+    total_spent: float
+    remaining: float
+    over_budget_count: int
+    warning_count: int
+    month: str
+
+
 # --- Transactions Récurrentes ---
 
 class RecurringTransactionOut(BaseModel):
