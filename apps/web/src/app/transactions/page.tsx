@@ -16,8 +16,9 @@ import {
 } from "@/lib/api";
 
 // les helpers de formatage commun sont centralisés
-import { money, downloadCSV } from "@/lib/format";
+import { money } from "@/lib/format";
 import { useToast } from "@/components/ui/Toast";
+import { ExportDialog } from "@/components/ExportDialog";
 
 export default function TransactionsPage(): React.JSX.Element {
   const [cats, setCats] = useState<Category[]>([]);
@@ -45,6 +46,9 @@ export default function TransactionsPage(): React.JSX.Element {
 
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+
+  // Export dialog
+  const [exportOpen, setExportOpen] = useState(false);
 
   // Édition en ligne
   const [editId, setEditId] = useState<number | null>(null);
@@ -206,27 +210,6 @@ export default function TransactionsPage(): React.JSX.Element {
     }
   }
 
-  function handleExportCSV() {
-    if (filtered.length === 0) {
-      addToast("Aucune transaction à exporter avec les filtres actuels.", "info");
-      return;
-    }
-
-    const headers = ["ID", "Date", "Catégorie", "Type", "Montant", "Note"];
-    const rows = filtered.map(t => [
-      t.id,
-      t.date,
-      `"${t.category?.name ?? "?"}"`,
-      t.category?.type === "income" ? "Revenu" : "Dépense",
-      t.amount,
-      `"${t.note ?? ""}"`
-    ]);
-
-    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-    downloadCSV(`transactions_export_${new Date().toISOString().slice(0, 10)}.csv`, csvContent);
-    addToast("Export CSV réussi", "success");
-  }
-
   return (
     <main className="space-y-10 pb-16">
       <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between animate-fade-in-up">
@@ -303,13 +286,13 @@ export default function TransactionsPage(): React.JSX.Element {
             <div className="flex gap-3 flex-wrap items-center">
               <button
                 className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 flex items-center gap-2 transition-colors text-sm"
-                onClick={handleExportCSV}
-                title="Exporter la sélection en CSV"
+                onClick={() => setExportOpen(true)}
+                title="Exporter les transactions (CSV ou PDF)"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
                 </svg>
-                <span className="hidden sm:inline">Exporter la sélection</span>
+                <span className="hidden sm:inline">Exporter</span>
               </button>
 
               <div className="h-6 w-px bg-white/10 mx-1 hidden lg:block"></div>
@@ -424,6 +407,14 @@ export default function TransactionsPage(): React.JSX.Element {
           )}
         </div>
       </section>
+
+      {/* Export dialog */}
+      <ExportDialog
+        isOpen={exportOpen}
+        onClose={() => setExportOpen(false)}
+        categories={cats}
+        onSuccess={(fmt) => addToast(`Export ${fmt.toUpperCase()} réussi`, "success")}
+      />
     </main>
   );
 }
