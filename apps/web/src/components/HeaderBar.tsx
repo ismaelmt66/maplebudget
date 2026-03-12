@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { clearToken, getToken } from "@/lib/auth";
 import { me } from "@/lib/api";
-import { clearChatHistory } from "@/lib/useChatHistory";
+import { archiveChatHistory } from "@/lib/useChatHistory";
 import QuickAddTransaction from "./QuickAddTransaction";
 import { Logo } from "./Logo";
 
@@ -145,7 +145,7 @@ export default function HeaderBar() {
   }, []);
 
   function logout() {
-    clearChatHistory(email);
+    archiveChatHistory(email);
     clearToken();
     setToken(null);
     setEmail(null);

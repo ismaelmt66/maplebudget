@@ -204,6 +204,50 @@ def create_transaction(
     return t
 
 
+from fastapi.responses import StreamingResponse
+import io
+import csv
+
+@app.get("/transactions/export")
+def export_transactions_csv(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Export all user transactions as a CSV file."""
+    # Fetch all transactions with their categories
+    transactions = (
+        db.query(models.Transaction, models.Category)
+        .join(models.Category, models.Transaction.category_id == models.Category.id)
+        .filter(models.Transaction.user_id == current.id)
+        .order_by(models.Transaction.date.desc())
+        .all()
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=",", quoting=csv.QUOTE_MINIMAL)
+    
+    # Write header
+    writer.writerow(["Date", "Montant", "Type", "Categorie", "Note"])
+    
+    # Write data
+    for t, c in transactions:
+        writer.writerow([
+            t.date,
+            f"{t.amount:.2f}",
+            "Revenu" if c.type == "income" else "Dépense",
+            c.name,
+            t.note or ""
+        ])
+    
+    output.seek(0)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=nexledger_transactions.csv"}
+    )
+
+
 @app.get("/transactions", response_model=List[schemas.TransactionOut])
 def list_transactions(
     db: Session = Depends(get_db),
@@ -915,6 +959,16 @@ def get_achievements(
 # ---------- AI Financial Coach (protected) ----------
 
 from services.ai_engine import FinancialAIEngine
+import os
+
+@app.get("/ai/status", response_model=schemas.AIStatusOut)
+def ai_status(current: models.User = Depends(get_current_user)):
+    """Return the current AI mode (llm or heuristic) based on available API keys."""
+    if os.environ.get("GROQ_API_KEY"):
+        return {"mode": "llm", "llm_provider": "groq"}
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return {"mode": "llm", "llm_provider": "anthropic"}
+    return {"mode": "heuristic", "llm_provider": None}
 
 @app.post("/ai/chat", response_model=schemas.ChatResponse)
 def ai_chat(

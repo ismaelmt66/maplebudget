@@ -137,6 +137,31 @@ export async function getTransactions(): Promise<Transaction[]> {
   return apiFetch("/transactions") as Promise<Transaction[]>;
 }
 
+export async function downloadTransactionsCSV(): Promise<void> {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const url = `${API_URL}/transactions/export`;
+  
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  
+  if (!response.ok) throw new Error("Failed to download CSV");
+  
+  const blob = await response.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = downloadUrl;
+  link.download = "nexledger_transactions.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(downloadUrl);
+}
+
 export async function createTransaction(payload: {
   amount: number;
   date: string;
@@ -284,10 +309,19 @@ export async function getAchievements(): Promise<Achievement[]> {
 
 /* ---------- AI Coach ---------- */
 
-export async function sendChatMessage(message: string): Promise<{ reply: string }> {
+export type AIStatus = {
+  mode: "llm" | "heuristic";
+  llm_provider: "groq" | "anthropic" | null;
+};
+
+export async function getAIStatus(): Promise<AIStatus> {
+  return apiFetch("/ai/status") as Promise<AIStatus>;
+}
+
+export async function sendChatMessage(message: string, history?: {role: string; content: string}[]): Promise<{ reply: string }> {
   return apiFetch("/ai/chat", {
     method: "POST",
-    body: JSON.stringify({ message }),
+    body: JSON.stringify(history ? { message, history } : { message }),
   }) as Promise<{ reply: string }>;
 }
 

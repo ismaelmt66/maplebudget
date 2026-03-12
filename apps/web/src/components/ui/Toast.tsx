@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
+import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 export type ToastType = "success" | "error" | "info";

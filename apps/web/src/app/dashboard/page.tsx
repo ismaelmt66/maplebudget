@@ -841,6 +841,56 @@ export default function DashboardPage(): React.JSX.Element {
         </div>
       </section>
 
+      {/* Budget Alerts */}
+      {(() => {
+        const alerts = byCategory.filter(c => {
+          if (c.type !== "expense" || !c.budget_limit) return false;
+          const pct = (Math.abs(c.total) / c.budget_limit) * 100;
+          return pct >= 80;
+        });
+
+        if (alerts.length === 0) return null;
+
+        return (
+          <section className="animate-fade-in-up delay-300">
+            <div className="rounded-2xl bg-black/30 border border-white/[0.06] p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-xl bg-orange-500/20 text-orange-400">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                </div>
+                <h2 className="text-lg font-semibold text-white">Alertes Budget</h2>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {alerts.map((a, i) => {
+                  const pct = Math.min((Math.abs(a.total) / (a.budget_limit || 1)) * 100, 100);
+                  const isCritical = pct >= 100;
+                  return (
+                    <div key={i} className={`flex items-center justify-between p-4 rounded-xl border backdrop-blur-md ${isCritical ? 'bg-red-500/10 border-red-500/30 text-red-100 shadow-[0_0_15px_rgba(239,68,68,0.1)]' : 'bg-orange-500/10 border-orange-500/30 text-orange-100'}`}>
+                      <div>
+                        <div className="font-semibold flex items-center gap-2">
+                          {a.name}
+                          {isCritical && <span className="px-2 py-0.5 rounded-full text-[10px] uppercase font-bold bg-red-500 text-white">Dépassement</span>}
+                        </div>
+                        <div className="text-xs opacity-70 mt-1">
+                          {money(Math.abs(a.total))} / {money(a.budget_limit || 0)} ({pct.toFixed(0)}%)
+                        </div>
+                      </div>
+                      <div className={`w-12 h-12 rounded-full border-4 flex items-center justify-center font-bold text-sm ${isCritical ? 'border-red-500 text-red-400' : 'border-orange-500 text-orange-400'}`}>
+                        {pct.toFixed(0)}%
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
       {/* Budget & Categories */}
       <section className="rounded-2xl bg-black/30 border border-white/[0.06] p-6 animate-fade-in-up delay-400">
         <div className="flex items-center justify-between gap-3 mb-6">

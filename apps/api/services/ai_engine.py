@@ -851,7 +851,7 @@ DONNÉES FINANCIÈRES DE L'UTILISATEUR
 
 Réponds à la question de l'utilisateur de façon utile, précise et actionnable."""
 
-    def process_query(self, message: str) -> str:
+    def process_query(self, message: str, history: list[dict] = None) -> str:
         """
         Main entry point.
         Tries Groq first (free), then Anthropic, then falls back to heuristics.
@@ -863,14 +863,16 @@ Réponds à la question de l'utilisateur de façon utile, précise et actionnabl
         if _GROQ_AVAILABLE and groq_key:
             try:
                 system_prompt = self._build_system_prompt()
+                messages = [{"role": "system", "content": system_prompt}]
+                if history:
+                    messages.extend(history)
+                messages.append({"role": "user", "content": message})
+
                 client = _GroqClient(api_key=groq_key)
                 response = client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
                     max_tokens=1500,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": message},
-                    ],
+                    messages=messages,
                 )
                 return response.choices[0].message.content
             except Exception:
@@ -880,12 +882,19 @@ Réponds à la question de l'utilisateur de façon utile, précise et actionnabl
         if _ANTHROPIC_AVAILABLE and anthropic_key:
             try:
                 system_prompt = self._build_system_prompt()
+                messages = []
+                if history:
+                    # Anthropic API expects strict alternating format, but we just pass the history if formatted right.
+                    # We assume history is formatted with "user" and "assistant" roles.
+                    messages.extend(history)
+                messages.append({"role": "user", "content": message})
+
                 client = _anthropic_lib.Anthropic(api_key=anthropic_key)
                 response = client.messages.create(
                     model="claude-haiku-4-5-20251001",
                     max_tokens=1500,
                     system=system_prompt,
-                    messages=[{"role": "user", "content": message}],
+                    messages=messages,
                 )
                 return response.content[0].text
             except Exception:

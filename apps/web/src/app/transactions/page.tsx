@@ -13,6 +13,7 @@ import {
   getCategories,
   getTransactions,
   updateTransaction,
+  downloadTransactionsCSV,
 } from "@/lib/api";
 
 // les helpers de formatage commun sont centralisés
@@ -203,25 +204,14 @@ export default function TransactionsPage(): React.JSX.Element {
     }
   }
 
-  function handleExportCSV() {
-    if (filtered.length === 0) {
-      addToast("Aucune transaction à exporter avec les filtres actuels.", "info");
-      return;
+  async function handleExportCSV() {
+    try {
+      addToast("Préparation de l'export CSV...", "info");
+      await downloadTransactionsCSV();
+      addToast("Export réussi !", "success");
+    } catch (e: unknown) {
+      addToast((e as Error)?.message ?? "Erreur lors de l'export", "error");
     }
-
-    const headers = ["ID", "Date", "Catégorie", "Type", "Montant", "Note"];
-    const rows = filtered.map(t => [
-      t.id,
-      t.date,
-      `"${t.category?.name ?? "?"}"`,
-      t.category?.type === "income" ? "Revenu" : "Dépense",
-      t.amount,
-      `"${t.note ?? ""}"`
-    ]);
-
-    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-    downloadCSV(`transactions_export_${new Date().toISOString().slice(0, 10)}.csv`, csvContent);
-    addToast("Export CSV réussi", "success");
   }
 
   return (

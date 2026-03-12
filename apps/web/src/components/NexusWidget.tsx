@@ -13,8 +13,12 @@ export default function NexusWidget() {
 
   // Only show when logged in and not already on the coach page
   useEffect(() => {
-    const token = getToken();
-    setVisible(!!token && pathname !== "/coach");
+    // delay visibility check slightly to avoid hydration mismatch and avoid synchronous setState
+    const t = setTimeout(() => {
+      const token = getToken();
+      setVisible(!!token && pathname !== "/coach");
+    }, 0);
+    return () => clearTimeout(t);
   }, [pathname]);
 
   // Auto-open the bubble after 2 seconds, once per session

@@ -209,6 +209,7 @@ class AchievementOut(BaseModel):
 # --- AI Coach ---
 class ChatMessage(BaseModel):
     message: str
+    history: Optional[List[dict]] = None
 
 class ChatResponse(BaseModel):
     reply: str
@@ -258,3 +259,9 @@ class AllocationSimulateResult(BaseModel):
 class AllocationApplyRequest(BaseModel):
     income_amount: float
     income_category_id: Optional[int] = None  # Pour filtrer les règles par catégorie source
+
+# --- AI ---
+
+class AIStatusOut(BaseModel):
+    mode: str
+    llm_provider: Optional[str] = None

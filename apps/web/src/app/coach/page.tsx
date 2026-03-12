@@ -2,7 +2,8 @@
 
 import { useRef, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { sendChatMessage, ApiError, me } from "@/lib/api";
+import Link from "next/link";
+import { sendChatMessage, getAIStatus, AIStatus, ApiError, me } from "@/lib/api";
 import { useChatHistory, AI_NAME, ChatMessage } from "@/lib/useChatHistory";
 
 // Contextuelles suggestions
@@ -54,11 +55,15 @@ export default function CoachPage() {
   // Persistent chat history
   const { messages, addMessage, clearMessages } = useChatHistory(email);
 
-  // Fetch authenticated user email
+  const [aiStatus, setAiStatus] = useState<AIStatus | null>(null);
+
+  // Fetch authenticated user email and AI status
   useEffect(() => {
     me()
       .then((u) => setEmail(u.email))
       .catch(() => router.push("/login"));
+      
+    getAIStatus().then(setAiStatus).catch(() => {});
   }, [router]);
 
   // Auto-scroll on new messages
@@ -75,7 +80,11 @@ export default function CoachPage() {
     setIsThinking(true);
 
     try {
-      const res = await sendChatMessage(text);
+      const history = messages
+        .filter(m => m.id !== "welcome")
+        .map(m => ({ role: m.role, content: m.content }));
+        
+      const res = await sendChatMessage(text, history);
       const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "ai",
@@ -113,6 +122,50 @@ export default function CoachPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* History link */}
+          <Link
+            href="/coach/history"
+            title="Voir l'historique des conversations"
+            className="p-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white/50 hover:text-indigo-400 transition-all"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+            </svg>
+          </Link>
+
+          {/* AI Mode badge */}
+          {aiStatus && (
+            <div
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold backdrop-blur-md shadow-lg ${
+                aiStatus.mode === "llm"
+                  ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-300"
+                  : "bg-amber-500/10 border-amber-500/30 text-amber-300"
+              }`}
+              title={
+                aiStatus.mode === "llm"
+                  ? `Propulsé par ${aiStatus.llm_provider === "groq" ? "Llama 3 (Groq)" : "Claude (Anthropic)"}`
+                  : "Mode Heuristique (Aucune clé API LLM détectée)"
+              }
+            >
+              {aiStatus.mode === "llm" ? (
+                <>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                  </svg>
+                  Mode IA
+                </>
+              ) : (
+                <>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                  </svg>
+                  Mode Heuristique
+                </>
+              )}
+            </div>
+          )}
+
           {/* Status badge */}
           <div className="flex items-center gap-2 bg-black/30 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-lg">
             <div className={`w-2.5 h-2.5 rounded-full ${isThinking ? "bg-purple-500 animate-pulse shadow-[0_0_8px_rgba(168,85,247,0.8)]" : "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"}`} />
