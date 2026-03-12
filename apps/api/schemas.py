@@ -237,3 +237,42 @@ class AllocationSimulateResult(BaseModel):
 class AllocationApplyRequest(BaseModel):
     income_amount: float
     income_category_id: Optional[int] = None  # Pour filtrer les règles par catégorie source
+
+
+# --- Recurring Transactions ---
+
+class RecurringTransactionCreate(BaseModel):
+    name: str
+    amount: float
+    frequency: str  # daily/weekly/biweekly/monthly/quarterly/yearly
+    next_occurrence: Optional[str] = None
+    last_occurrence: Optional[str] = None
+    category_name: Optional[str] = None
+
+
+class RecurringTransactionUpdate(BaseModel):
+    name: Optional[str] = None
+    amount: Optional[float] = None
+    frequency: Optional[str] = None
+    next_occurrence: Optional[str] = None
+    last_occurrence: Optional[str] = None
+    status: Optional[str] = None  # active/paused/ended
+    category_name: Optional[str] = None
+
+
+class RecurringTransactionOut(BaseModel):
+    id: int
+    user_id: int
+    name: str
+    amount: float
+    frequency: str
+    next_occurrence: Optional[str] = None
+    last_occurrence: Optional[str] = None
+    status: str
+    confidence_score: float
+    category_name: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+    class Config:
+        from_attributes = True
