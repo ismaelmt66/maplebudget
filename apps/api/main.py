@@ -8,6 +8,7 @@ catégories, transactions, objectifs et le tableau de bord.
 from dotenv import load_dotenv
 load_dotenv()
 
+import re
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
@@ -311,10 +312,9 @@ def _safe_filename_part(value: Optional[str], fallback: str = "all") -> str:
     query parameters such as ``date_from`` / ``date_to`` and prevent header
     injection or path traversal.
     """
-    import re as _re
     if not value:
         return fallback
-    sanitized = _re.sub(r"[^A-Za-z0-9_\-]", "", value)
+    sanitized = re.sub(r"[^A-Za-z0-9_\-]", "", value)
     return sanitized or fallback
 
 

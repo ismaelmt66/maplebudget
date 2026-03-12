@@ -17,6 +17,9 @@ try:
 except ImportError:  # pragma: no cover
     _FPDF_AVAILABLE = False
 
+# Maximum number of characters shown in the Note column of PDF exports.
+# Longer notes are truncated with "…" to prevent table overflow.
+_PDF_NOTE_MAX_LENGTH = 30
 
 @dataclass
 class ExportFilters:
@@ -264,8 +267,8 @@ def _build_pdf(
     for tx in transactions:
         note = str(tx.get("note", "") or "")
         # Truncate long notes so they fit the cell
-        if len(note) > 30:
-            note = note[:27] + "..."
+        if len(note) > _PDF_NOTE_MAX_LENGTH:
+            note = note[:_PDF_NOTE_MAX_LENGTH - 3] + "..."
         row = [
             str(tx.get("id", "")),
             str(tx.get("date", "")),
