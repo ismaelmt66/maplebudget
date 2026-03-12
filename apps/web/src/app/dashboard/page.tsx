@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, getCategories, getTransactions, Category, Transaction } from "@/lib/api";
+import BudgetAlertBanner from "@/components/BudgetAlertBanner";
 
 // type d’aide utilisé uniquement dans ce fichier pour traiter les données de
 // transaction ; nous enrichissons le `Transaction` renvoyé par l’API avec des
@@ -697,6 +698,9 @@ export default function DashboardPage(): React.JSX.Element {
           </div>
         </div>
       )}
+
+      {/* Budget Alerts Banner */}
+      <BudgetAlertBanner />
 
       {/* KPIs */}
       <section className="grid gap-6 md:grid-cols-4 animate-fade-in-up delay-100">

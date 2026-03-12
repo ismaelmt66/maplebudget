@@ -634,6 +634,142 @@ def dashboard(
     )
 
 
+# ---------- Budget Alerts (protected) ----------
+
+def _budget_alert_status(percentage: float) -> str:
+    if percentage >= 100:
+        return "exceeded"
+    if percentage >= 90:
+        return "danger"
+    if percentage >= 70:
+        return "warning"
+    return "safe"
+
+
+@app.get("/budget/alerts", response_model=schemas.BudgetAlertResponse)
+def get_budget_alerts(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Return budget alerts for all categories with a budget_limit for the current month."""
+    today = dt_date.today()
+    month_start = today.replace(day=1).isoformat()
+    # First day of next month
+    if today.month == 12:
+        month_end = today.replace(year=today.year + 1, month=1, day=1).isoformat()
+    else:
+        month_end = today.replace(month=today.month + 1, day=1).isoformat()
+
+    categories = (
+        db.query(models.Category)
+        .filter(
+            models.Category.user_id == current.id,
+            models.Category.budget_limit.isnot(None),
+        )
+        .all()
+    )
+
+    alerts = []
+    for cat in categories:
+        spent = (
+            db.query(func.coalesce(func.sum(models.Transaction.amount), 0))
+            .filter(
+                models.Transaction.user_id == current.id,
+                models.Transaction.category_id == cat.id,
+                models.Transaction.date >= month_start,
+                models.Transaction.date < month_end,
+            )
+            .scalar()
+            or 0
+        )
+        spent = float(spent)
+        budget_limit = float(cat.budget_limit)  # type: ignore[arg-type]
+        remaining = budget_limit - spent
+        percentage = (spent / budget_limit * 100) if budget_limit > 0 else 0.0
+        alerts.append(
+            schemas.BudgetAlert(
+                category_id=cat.id,
+                category_name=cat.name,
+                budget_limit=budget_limit,
+                spent=spent,
+                remaining=remaining,
+                percentage=round(percentage, 2),
+                status=_budget_alert_status(percentage),
+            )
+        )
+
+    total_budget = sum(a.budget_limit for a in alerts)
+    total_spent = sum(a.spent for a in alerts)
+    month_str = today.strftime("%Y-%m")
+
+    return schemas.BudgetAlertResponse(
+        alerts=alerts,
+        total_budget=total_budget,
+        total_spent=total_spent,
+        month=month_str,
+    )
+
+
+@app.get("/budget/summary", response_model=schemas.BudgetSummary)
+def get_budget_summary(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Return a quick budget summary for the current month."""
+    today = dt_date.today()
+    month_start = today.replace(day=1).isoformat()
+    if today.month == 12:
+        month_end = today.replace(year=today.year + 1, month=1, day=1).isoformat()
+    else:
+        month_end = today.replace(month=today.month + 1, day=1).isoformat()
+
+    categories = (
+        db.query(models.Category)
+        .filter(
+            models.Category.user_id == current.id,
+            models.Category.budget_limit.isnot(None),
+        )
+        .all()
+    )
+
+    total_budget = 0.0
+    total_spent = 0.0
+    over_budget_count = 0
+    warning_count = 0
+
+    for cat in categories:
+        spent = (
+            db.query(func.coalesce(func.sum(models.Transaction.amount), 0))
+            .filter(
+                models.Transaction.user_id == current.id,
+                models.Transaction.category_id == cat.id,
+                models.Transaction.date >= month_start,
+                models.Transaction.date < month_end,
+            )
+            .scalar()
+            or 0
+        )
+        spent = float(spent)
+        budget_limit = float(cat.budget_limit)  # type: ignore[arg-type]
+        total_budget += budget_limit
+        total_spent += spent
+        percentage = (spent / budget_limit * 100) if budget_limit > 0 else 0.0
+        status = _budget_alert_status(percentage)
+        if status == "exceeded":
+            over_budget_count += 1
+        elif status in ("warning", "danger"):
+            warning_count += 1
+
+    return schemas.BudgetSummary(
+        total_budget=total_budget,
+        total_spent=total_spent,
+        remaining=total_budget - total_spent,
+        over_budget_count=over_budget_count,
+        warning_count=warning_count,
+        month=today.strftime("%Y-%m"),
+    )
+
+
 # ---------- Analytics (protected) ----------
 
 @app.get("/analytics/subscriptions", response_model=List[schemas.SubscriptionOut])
