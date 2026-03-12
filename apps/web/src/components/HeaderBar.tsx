@@ -104,6 +104,7 @@ const Icons = {
   Transactions: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>,
   Tools: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /><rect x="3" y="8" width="18" height="12" rx="2" /></svg>, // Generic tools icon
   Magic: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>,
+  Recurring: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>,
   Patrimoine: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /><path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /><path d="M18 12a2 2 0 0 0 0 4h4v-4Z" /></svg>,
   Goals: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>,
   Categories: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>,
@@ -213,6 +214,7 @@ export default function HeaderBar() {
             <nav className="hidden lg:flex items-center gap-1.5 absolute left-1/2 -translate-x-1/2">
               <NavLink href="/dashboard" label="Dashboard" icon={Icons.Dashboard} />
               <NavLink href="/transactions" label="Transactions" icon={Icons.Transactions} />
+              <NavLink href="/recurring" label="Récurrentes" icon={Icons.Recurring} />
 
               <div className="w-px h-6 bg-white/10 mx-2" /> {/* Divider */}
 
@@ -288,6 +290,7 @@ export default function HeaderBar() {
         <div className="lg:hidden absolute top-full left-0 w-full bg-black/90 backdrop-blur-3xl border-b border-white/10 shadow-2xl p-4 flex flex-col gap-2 overflow-y-auto max-h-[80vh]">
           <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl bg-white/5 font-medium">Dashboard</Link>
           <Link href="/transactions" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl bg-white/5 font-medium">Transactions</Link>
+          <Link href="/recurring" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl bg-white/5 font-medium">Récurrentes</Link>
           <div className="text-xs font-bold text-white/40 uppercase tracking-widest px-2 mt-2">Outils</div>
           <Link href="/assets" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Patrimoine Net</Link>
           <Link href="/goals" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Objectifs</Link>

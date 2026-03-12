@@ -21,6 +21,7 @@ class User(Base):
     transactions: Mapped[list["Transaction"]] = relationship(back_populates="user")
     goals: Mapped[list["Goal"]] = relationship(back_populates="user")
     assets: Mapped[list["Asset"]] = relationship(back_populates="user")
+    recurring_transactions: Mapped[list["RecurringTransaction"]] = relationship(back_populates="user")
 
 
 class Category(Base):
@@ -105,3 +106,23 @@ class AllocationRule(Base):
     user: Mapped["User"] = relationship()
     target_asset: Mapped["Asset"] = relationship()
     source_category: Mapped["Category | None"] = relationship()
+
+
+class RecurringTransaction(Base):
+    """Transaction récurrente détectée ou créée manuellement."""
+    __tablename__ = "recurring_transactions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    name: Mapped[str] = mapped_column(String(255))
+    amount: Mapped[float] = mapped_column(Numeric(12, 2))
+    frequency: Mapped[str] = mapped_column(String(20))  # daily/weekly/biweekly/monthly/quarterly/yearly
+    next_occurrence: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    last_occurrence: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="active")  # active/paused/ended
+    confidence_score: Mapped[float] = mapped_column(Numeric(3, 2), default=0.0)
+    category_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[str] = mapped_column(String(25))
+    updated_at: Mapped[str] = mapped_column(String(25))
+
+    user: Mapped["User"] = relationship(back_populates="recurring_transactions")
