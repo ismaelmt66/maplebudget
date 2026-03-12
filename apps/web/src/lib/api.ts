@@ -364,3 +364,62 @@ export async function applyAllocation(income_amount: number, income_category_id?
 export async function getPatrimoineAIAnalysis(): Promise<{ report: string }> {
   return apiFetch("/assets/ai-analysis") as Promise<{ report: string }>;
 }
+
+/* ---------- Recurring Transactions ---------- */
+
+export type RecurringTransaction = {
+  id: number;
+  name: string;
+  amount: number;
+  frequency: string;
+  next_occurrence: string | null;
+  last_occurrence: string | null;
+  status: string;
+  confidence_score: number;
+  category_name: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getRecurringTransactions(): Promise<RecurringTransaction[]> {
+  return apiFetch("/transactions/recurring") as Promise<RecurringTransaction[]>;
+}
+
+export async function createRecurringTransaction(payload: {
+  name: string;
+  amount: number;
+  frequency: string;
+  next_occurrence?: string | null;
+  category_name?: string | null;
+}): Promise<RecurringTransaction> {
+  return apiFetch("/transactions/recurring", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }) as Promise<RecurringTransaction>;
+}
+
+export async function detectRecurringTransactions(): Promise<RecurringTransaction[]> {
+  return apiFetch("/transactions/detect-recurring", {
+    method: "POST",
+  }) as Promise<RecurringTransaction[]>;
+}
+
+export async function updateRecurringTransaction(
+  id: number,
+  payload: {
+    name?: string;
+    amount?: number;
+    frequency?: string;
+    next_occurrence?: string | null;
+    status?: string;
+  }
+): Promise<RecurringTransaction> {
+  return apiFetch(`/transactions/recurring/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  }) as Promise<RecurringTransaction>;
+}
+
+export async function deleteRecurringTransaction(id: number): Promise<{ deleted: boolean; id: number }> {
+  return apiFetch(`/transactions/recurring/${id}`, { method: "DELETE" }) as Promise<{ deleted: boolean; id: number }>;
+}

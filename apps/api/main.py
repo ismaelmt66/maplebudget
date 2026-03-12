@@ -25,6 +25,7 @@ import models
 import schemas
 from auth import hash_password, verify_password, create_access_token, decode_token
 from services.export_service import ExportService, ExportFilters
+from services.recurring_detection import RecurringDetectionEngine
 
 app = FastAPI(title="NexLeger API", version="0.2.0")
 
@@ -240,6 +241,163 @@ def list_transactions(
         .order_by(models.Transaction.id.desc())
         .all()
     )
+
+
+# ---------- Recurring Transactions (protected) ----------
+
+@app.get("/transactions/recurring", response_model=List[schemas.RecurringTransactionOut])
+def list_recurring_transactions(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """List all recurring transactions for the authenticated user."""
+    return (
+        db.query(models.RecurringTransaction)
+        .filter(models.RecurringTransaction.user_id == current.id)
+        .order_by(models.RecurringTransaction.id.desc())
+        .all()
+    )
+
+
+@app.post("/transactions/recurring", response_model=schemas.RecurringTransactionOut)
+def create_recurring_transaction(
+    payload: schemas.RecurringTransactionCreate,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Manually create a recurring transaction."""
+    now = datetime.utcnow().isoformat()
+    rt = models.RecurringTransaction(
+        user_id=current.id,
+        name=payload.name,
+        amount=payload.amount,
+        frequency=payload.frequency,
+        next_occurrence=payload.next_occurrence,
+        last_occurrence=None,
+        status="active",
+        confidence_score=1.0,
+        category_name=payload.category_name,
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(rt)
+    db.commit()
+    db.refresh(rt)
+    return rt
+
+
+@app.post("/transactions/detect-recurring", response_model=List[schemas.RecurringTransactionOut])
+def detect_recurring_transactions(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Auto-detect recurring patterns from transaction history and save results."""
+    engine = RecurringDetectionEngine(db=db, user_id=current.id)
+    patterns = engine.detect_recurring_patterns()
+
+    now = datetime.utcnow().isoformat()
+    created = []
+    for p in patterns:
+        # Skip if a recurring transaction with the same name already exists
+        existing = (
+            db.query(models.RecurringTransaction)
+            .filter(
+                models.RecurringTransaction.user_id == current.id,
+                models.RecurringTransaction.name == p["name"],
+            )
+            .first()
+        )
+        if existing:
+            # Update existing record
+            existing.amount = p["amount"]
+            existing.frequency = p["frequency"]
+            existing.confidence_score = p["confidence_score"]
+            existing.last_occurrence = p["last_occurrence"]
+            existing.next_occurrence = p["next_occurrence"]
+            existing.category_name = p["category_name"]
+            existing.updated_at = now
+            db.commit()
+            db.refresh(existing)
+            created.append(existing)
+        else:
+            rt = models.RecurringTransaction(
+                user_id=current.id,
+                name=p["name"],
+                amount=p["amount"],
+                frequency=p["frequency"],
+                next_occurrence=p["next_occurrence"],
+                last_occurrence=p["last_occurrence"],
+                status="active",
+                confidence_score=p["confidence_score"],
+                category_name=p["category_name"],
+                created_at=now,
+                updated_at=now,
+            )
+            db.add(rt)
+            db.commit()
+            db.refresh(rt)
+            created.append(rt)
+
+    return created
+
+
+@app.patch("/transactions/recurring/{rt_id}", response_model=schemas.RecurringTransactionOut)
+def update_recurring_transaction(
+    rt_id: int,
+    payload: schemas.RecurringTransactionUpdate,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Update a recurring transaction (name, amount, frequency, status)."""
+    rt = (
+        db.query(models.RecurringTransaction)
+        .filter(
+            models.RecurringTransaction.id == rt_id,
+            models.RecurringTransaction.user_id == current.id,
+        )
+        .first()
+    )
+    if not rt:
+        raise HTTPException(status_code=404, detail="Recurring transaction not found")
+
+    if payload.name is not None:
+        rt.name = payload.name
+    if payload.amount is not None:
+        rt.amount = payload.amount
+    if payload.frequency is not None:
+        rt.frequency = payload.frequency
+    if payload.next_occurrence is not None:
+        rt.next_occurrence = payload.next_occurrence
+    if payload.status is not None:
+        rt.status = payload.status
+
+    rt.updated_at = datetime.utcnow().isoformat()
+    db.commit()
+    db.refresh(rt)
+    return rt
+
+
+@app.delete("/transactions/recurring/{rt_id}")
+def delete_recurring_transaction(
+    rt_id: int,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Delete a recurring transaction."""
+    rt = (
+        db.query(models.RecurringTransaction)
+        .filter(
+            models.RecurringTransaction.id == rt_id,
+            models.RecurringTransaction.user_id == current.id,
+        )
+        .first()
+    )
+    if not rt:
+        raise HTTPException(status_code=404, detail="Recurring transaction not found")
+
+    db.delete(rt)
+    db.commit()
+    return {"deleted": True, "id": rt_id}
 
 
 @app.put("/transactions/{tx_id}", response_model=schemas.TransactionOut)
