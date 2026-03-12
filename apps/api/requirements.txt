@@ -12,3 +12,4 @@ python-dateutil
 pyotp
 qrcode[pil]
 plaid-python
+fpdf2

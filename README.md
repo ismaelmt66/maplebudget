@@ -56,13 +56,26 @@ NexLedger repose sur une architecture moderne séparant clairement l'interface u
 
 ## 🚀 Installation & Lancement Rapide
 
-Ce projet utilise un **Monorepo** géré par npm workspaces. Un seul script suffit pour lancer simultanément le frontend et le backend.
-
-### 1. Pré-requis
+### Pré-requis
 - **Node.js** (v18+)
 - **Python** (v3.10+)
+- **npm** (v9+)
 
-### 2. Configuration Backend
+### 1. Cloner le projet
+```bash
+git clone https://github.com/ismaelmt66/maplebudget.git
+cd maplebudget
+```
+
+### 2. Variables d'Environnement
+Copiez le fichier d'exemple et configurez vos variables :
+```bash
+cp .env.example apps/api/.env
+```
+
+Éditez `apps/api/.env` avec vos valeurs (clé secrète JWT, clés API IA, etc.).
+
+### 3. Configuration Backend
 Mettez en place l'environnement virtuel Python :
 ```bash
 cd apps/api
@@ -76,8 +89,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Lancement Global
-Revenez à la racine du projet, installez les dépendances Node.js et lancez le double serveur de développement via Turborepo :
+### 4. Lancement Global
+Revenez à la racine du projet, installez les dépendances Node.js et lancez les serveurs :
 
 ```bash
 cd ../../
@@ -85,8 +98,22 @@ npm install
 npm run dev
 ```
 
-- Le frontend sera disponible sur `http://localhost:3000` (ou 3001)
-- L'API backend sur `http://127.0.0.1:8000` (ou 8001)
+- Le frontend sera disponible sur `http://localhost:3000`
+- L'API backend sur `http://127.0.0.1:8000`
+- La documentation Swagger UI sur `http://127.0.0.1:8000/docs`
+
+### 5. Qualité du Code
+
+```bash
+# Lint Frontend
+cd apps/web && npm run lint
+
+# Type check TypeScript
+cd apps/web && npx tsc --noEmit
+
+# Build de production
+cd apps/web && npm run build
+```
 
 ---
 

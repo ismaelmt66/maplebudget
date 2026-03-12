@@ -337,8 +337,11 @@ class HealthScoreBreakdown(BaseModel):
 class HealthScoreOut(BaseModel):
     score: int
     grade: str
+    label: Optional[str] = None
+    color: Optional[str] = None
     breakdown: HealthScoreBreakdown
     insights: List[str]
+    recommendations: Optional[List[str]] = None
     last_calculated: str
 
 

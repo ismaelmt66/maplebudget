@@ -1,0 +1,21 @@
+# Copilot Coding Agent Setup Steps
+# This file configures the environment for Copilot's coding agent
+# so it can build, lint, and test the project.
+
+steps:
+  - name: Install Python dependencies
+    run: |
+      pip install -r apps/api/requirements.txt
+      pip install ruff pytest httpx
+
+  - name: Install Node dependencies
+    run: |
+      cd apps/web
+      npm install
+
+  - name: Verify setup
+    run: |
+      cd apps/web
+      npx next build || true
+      cd ../../apps/api
+      ruff check . || true

@@ -91,6 +91,16 @@ def me(current: models.User = Depends(get_current_user)):
     return current
 
 
+@app.get("/auth/onboarding-status")
+def onboarding_status(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Retourne si l’utilisateur a complété l’onboarding (au moins 1 catégorie)."""
+    has_categories = db.query(models.Category).filter(models.Category.user_id == current.id).first() is not None
+    return {"is_onboarded": has_categories}
+
+
 # ---------- Categories (protected) ----------
 
 @app.post("/categories", response_model=schemas.CategoryOut)
@@ -1000,6 +1010,165 @@ def ai_chat(
     return {"reply": reply.strip()}
 
 
+# ---------- Recurring Transactions CRUD ----------
+
+@app.get("/recurring-transactions")
+def list_recurring_transactions(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    return db.query(models.RecurringTransaction).filter(
+        models.RecurringTransaction.user_id == current.id
+    ).all()
+
+
+@app.post("/recurring-transactions")
+def create_recurring_transaction(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    rt = models.RecurringTransaction(
+        user_id=current.id,
+        name=payload.get("name", ""),
+        amount=payload.get("amount", 0),
+        frequency=payload.get("frequency", "monthly"),
+        next_date=payload.get("next_date", str(dt_date.today())),
+        note=payload.get("note"),
+        is_active=payload.get("is_active", True),
+        category_id=payload.get("category_id"),
+    )
+    db.add(rt)
+    db.commit()
+    db.refresh(rt)
+    return rt
+
+
+@app.put("/recurring-transactions/{rt_id}")
+def update_recurring_transaction(
+    rt_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    rt = db.query(models.RecurringTransaction).filter(
+        models.RecurringTransaction.id == rt_id,
+        models.RecurringTransaction.user_id == current.id,
+    ).first()
+    if not rt:
+        raise HTTPException(status_code=404, detail="Introuvable.")
+    for k, v in payload.items():
+        if hasattr(rt, k):
+            setattr(rt, k, v)
+    db.commit()
+    db.refresh(rt)
+    return rt
+
+
+@app.delete("/recurring-transactions/{rt_id}")
+def delete_recurring_transaction(
+    rt_id: int,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    rt = db.query(models.RecurringTransaction).filter(
+        models.RecurringTransaction.id == rt_id,
+        models.RecurringTransaction.user_id == current.id,
+    ).first()
+    if not rt:
+        raise HTTPException(status_code=404, detail="Introuvable.")
+    db.delete(rt)
+    db.commit()
+    return {"ok": True}
+
+
+@app.get("/budget-alerts/summary")
+def budget_alerts_summary(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Retourne un résumé global des alertes budget."""
+    today = dt_date.today()
+    month_prefix = f"{today.year}-{str(today.month).zfill(2)}"
+    alerts = db.query(models.BudgetAlert).filter(models.BudgetAlert.user_id == current.id).all()
+    over = 0
+    warning = 0
+    total_limit = 0.0
+    total_spent = 0.0
+    for a in alerts:
+        spent = float(db.query(func.sum(models.Transaction.amount)).filter(
+            models.Transaction.category_id == a.category_id,
+            models.Transaction.date.startswith(month_prefix),
+        ).scalar() or 0)
+        pct = (spent / float(a.monthly_limit) * 100) if a.monthly_limit > 0 else 0
+        if pct >= 100:
+            over += 1
+        elif pct >= 80:
+            warning += 1
+        total_limit += float(a.monthly_limit)
+        total_spent += spent
+    return {
+        "total_alerts": len(alerts),
+        "over_budget_count": over,
+        "warning_count": warning,
+        "total_budget": total_limit,
+        "total_spent": total_spent,
+    }
+
+
+@app.get("/onboarding/default-categories")
+def get_default_categories():
+    """Retourne les catégories par défaut suggérées à l'onboarding."""
+    return [
+        {"name": "🏠 Logement", "type": "expense", "icon": "🏠", "suggested_budget": 800},
+        {"name": "🍔 Alimentation", "type": "expense", "icon": "🍔", "suggested_budget": 400},
+        {"name": "🚗 Transport", "type": "expense", "icon": "🚗", "suggested_budget": 200},
+        {"name": "💊 Santé", "type": "expense", "icon": "💊", "suggested_budget": 100},
+        {"name": "🎬 Loisirs", "type": "expense", "icon": "🎬", "suggested_budget": 150},
+        {"name": "👕 Vêtements", "type": "expense", "icon": "👕", "suggested_budget": 100},
+        {"name": "📱 Abonnements", "type": "expense", "icon": "📱", "suggested_budget": 80},
+        {"name": "💼 Salaire", "type": "income", "icon": "💼", "suggested_budget": None},
+        {"name": "💰 Épargne", "type": "expense", "icon": "💰", "suggested_budget": 300},
+        {"name": "🏦 Investissements", "type": "expense", "icon": "🏦", "suggested_budget": 200},
+    ]
+
+
+@app.post("/onboarding/setup-categories")
+def setup_onboarding_categories(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Crée un ensemble de catégories à partir des choix de l'onboarding."""
+    selected = payload.get("categories", [])
+    created = []
+    for cat in selected:
+        existing = db.query(models.Category).filter(
+            models.Category.user_id == current.id,
+            models.Category.name == cat.get("name"),
+        ).first()
+        if not existing:
+            new_cat = models.Category(
+                user_id=current.id,
+                name=cat.get("name"),
+                type=cat.get("type", "expense"),
+                budget_limit=cat.get("budget_limit"),
+            )
+            db.add(new_cat)
+            created.append(cat.get("name"))
+    db.commit()
+    return {"created": len(created), "categories": created}
+
+
+@app.post("/onboarding/complete")
+def complete_onboarding(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Marque l'onboarding comme complété."""
+    return {"is_onboarded": True, "message": "Bienvenue sur NexLedger !"}
+
+
 # ---------- Transactions: process-recurring ----------
 
 @app.post("/transactions/process-recurring")
@@ -1429,9 +1598,13 @@ def financial_health_score(
     if not insights:
         insights.append("Votre santé financière est bonne. Continuez ainsi !")
 
+    color = "emerald" if total_score >= 80 else "blue" if total_score >= 60 else "amber" if total_score >= 40 else "red"
+
     return schemas.HealthScoreOut(
         score=total_score,
         grade=grade,
+        label=grade,
+        color=color,
         breakdown=schemas.HealthScoreBreakdown(
             savings_rate=round(savings_score, 1),
             budget_compliance=round(budget_score, 1),
@@ -1440,6 +1613,7 @@ def financial_health_score(
             diversification=0.0,
         ),
         insights=insights,
+        recommendations=insights,
         last_calculated=today.strftime("%Y-%m-%d"),
     )
 

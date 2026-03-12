@@ -114,6 +114,10 @@ export async function me(): Promise<User> {
   return apiFetch("/auth/me") as Promise<User>;
 }
 
+export async function getOnboardingStatus(): Promise<{ is_onboarded: boolean }> {
+  return apiFetch("/auth/onboarding-status") as Promise<{ is_onboarded: boolean }>;
+}
+
 /* ---------- Categories ---------- */
 export async function getCategories(): Promise<Category[]> {
   return apiFetch("/categories") as Promise<Category[]>;
@@ -425,6 +429,12 @@ export type BudgetAlert = {
   category_name: string;
   monthly_limit: number;
   created_at: string;
+  // enriched fields (from /budget-alerts/check join)
+  status?: "safe" | "warning" | "danger" | "exceeded";
+  percentage?: number;
+  spent?: number;
+  budget_limit?: number;
+  remaining?: number;
 };
 
 export type BudgetAlertCheck = {
@@ -457,19 +467,30 @@ export async function checkBudgetAlerts(): Promise<BudgetAlertCheck[]> {
 export type HealthScore = {
   score: number;
   grade: string;
+  label?: string;
+  color?: string;
   breakdown: {
     savings_rate: number;
     budget_compliance: number;
+    budget_adherence?: number;
     emergency_fund: number;
     goal_progress: number;
+    goals_progress?: number;
     diversification: number;
   };
   insights: string[];
+  recommendations?: string[];
   last_calculated: string;
 };
 
 export async function getFinancialHealthScore(): Promise<HealthScore> {
   return apiFetch("/financial-health-score") as Promise<HealthScore>;
+}
+
+// Alias attendu par HealthScoreGauge.tsx
+export type HealthScoreResponse = HealthScore;
+export async function getHealthScore(): Promise<HealthScoreResponse> {
+  return apiFetch("/financial-health-score") as Promise<HealthScoreResponse>;
 }
 
 /* ---------- Global Search ---------- */
@@ -546,4 +567,123 @@ export async function simulateProjection(payload: {
     method: "POST",
     body: JSON.stringify(payload),
   }) as Promise<SimulatorResult>;
+}
+
+/* ---------- BudgetAlert (extended — pour BudgetAlertCard/budget page) ---------- */
+
+// Override the base BudgetAlert with richer fields from /budget-alerts/check
+declare module "@/lib/api" {}
+
+export type BudgetAlertResponse = {
+  alerts: BudgetAlert[];
+  total_budget: number;
+  total_spent: number;
+  over_budget_count: number;
+  warning_count: number;
+  month?: string;
+};
+
+export async function getBudgetAlertsFull(): Promise<BudgetAlertResponse> {
+  const [alerts, checks] = await Promise.all([
+    apiFetch("/budget-alerts") as Promise<BudgetAlert[]>,
+    apiFetch("/budget-alerts/check") as Promise<BudgetAlertCheck[]>,
+  ]);
+  const checkMap = new Map(checks.map(c => [c.category_id, c]));
+  const enriched = alerts.map(a => {
+    const c = checkMap.get(a.category_id);
+    const pct = c?.percentage ?? 0;
+    const spent = c?.current_spending ?? 0;
+    const limit = a.monthly_limit;
+    const remaining = limit - spent;
+    const status: "safe" | "warning" | "danger" | "exceeded" =
+      pct >= 100 ? "exceeded" : pct >= 90 ? "danger" : pct >= 75 ? "warning" : "safe";
+    return { ...a, status, percentage: pct, spent, budget_limit: limit, remaining };
+  });
+  const over = enriched.filter(a => a.status === "exceeded").length;
+  const warning = enriched.filter(a => a.status === "warning" || a.status === "danger").length;
+  return {
+    alerts: enriched,
+    total_budget: enriched.reduce((s, a) => s + a.budget_limit, 0),
+    total_spent: enriched.reduce((s, a) => s + a.spent, 0),
+    over_budget_count: over,
+    warning_count: warning,
+  };
+}
+
+
+/* ---------- Budget Summary (pour BudgetAlertBanner) ---------- */
+
+export type BudgetSummary = {
+  total_alerts: number;
+  over_budget_count: number;
+  warning_count: number;
+  total_budget: number;
+  total_spent: number;
+};
+
+export async function getBudgetSummary(): Promise<BudgetSummary> {
+  return apiFetch("/budget-alerts/summary") as Promise<BudgetSummary>;
+}
+
+/* ---------- Recurring Transactions ---------- */
+
+export type RecurringTransaction = {
+  id: number;
+  name: string;
+  amount: number;
+  frequency: string;
+  next_date: string;
+  next_occurrence?: string;
+  last_occurrence?: string | null;
+  note?: string;
+  is_active: boolean;
+  status?: "active" | "paused" | "ended";
+  category_id: number;
+  category_name?: string;
+  user_id: number;
+  confidence_score?: number;
+};
+
+export async function getRecurringTransactions(): Promise<RecurringTransaction[]> {
+  return apiFetch("/recurring-transactions") as Promise<RecurringTransaction[]>;
+}
+
+export async function createRecurringTransaction(payload: Partial<RecurringTransaction>): Promise<RecurringTransaction> {
+  return apiFetch("/recurring-transactions", { method: "POST", body: JSON.stringify(payload) }) as Promise<RecurringTransaction>;
+}
+
+export async function updateRecurringTransaction(id: number, payload: Partial<RecurringTransaction>): Promise<RecurringTransaction> {
+  return apiFetch(`/recurring-transactions/${id}`, { method: "PUT", body: JSON.stringify(payload) }) as Promise<RecurringTransaction>;
+}
+
+export async function deleteRecurringTransaction(id: number): Promise<void> {
+  await apiFetch(`/recurring-transactions/${id}`, { method: "DELETE" });
+}
+
+export async function detectRecurringTransactions(): Promise<RecurringTransaction[]> {
+  return apiFetch("/transactions/suggest-category") as Promise<RecurringTransaction[]>;
+}
+
+/* ---------- Onboarding ---------- */
+
+export type DefaultCategory = {
+  name: string;
+  type: string;
+  icon: string;
+  suggested_budget: number | null;
+};
+
+export async function getDefaultCategories(): Promise<DefaultCategory[]> {
+  return apiFetch("/onboarding/default-categories") as Promise<DefaultCategory[]>;
+}
+
+export async function setupCategories(categories: { name: string; type: string; budget_limit?: number }[]): Promise<{ created: number }> {
+  return apiFetch("/onboarding/setup-categories", {
+    method: "POST",
+    body: JSON.stringify({ categories }),
+  }) as Promise<{ created: number }>;
+}
+
+export async function completeOnboarding(): Promise<{ is_onboarded: boolean }> {
+  return apiFetch("/onboarding/complete", { method: "POST" }) as Promise<{ is_onboarded: boolean }>;
 }
