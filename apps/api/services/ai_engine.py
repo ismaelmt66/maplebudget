@@ -720,6 +720,148 @@ class FinancialAIEngine:
         report += "\nPosez votre question différemment ou choisissez une commande ci-dessus !"
         return report
 
+    # ─── Nexus Proactif ───────────────────────────────────────────────────────
+
+    def generate_proactive_notifications(self) -> list[dict]:
+        """
+        Analyse les données financières et génère des notifications pertinentes.
+        Retourne une liste de {title, body, type}.
+        """
+        notifications = []
+        now = datetime.now()
+        curr_start, curr_end = self._get_current_month_boundaries()
+        curr = self._get_monthly_stats(curr_start, curr_end)
+        last_start, last_end = self._get_last_month_boundaries()
+        last = self._get_monthly_stats(last_start, last_end)
+
+        # 1. Budget dépassé pour une catégorie (+40% vs mois dernier)
+        if curr["by_category"] and last["by_category"]:
+            for cat, amt in curr["by_category"].items():
+                last_amt = last["by_category"].get(cat, 0)
+                if last_amt > 0 and amt > last_amt * 1.4:
+                    pct = (amt / last_amt - 1) * 100
+                    notifications.append({
+                        "title": f"⚠️ Hausse {cat}",
+                        "body": f"Tu as dépensé {amt:,.0f}$ en {cat} ce mois — c'est {pct:.0f}% de plus que le mois dernier ({last_amt:,.0f}$).",
+                        "type": "alert",
+                    })
+
+        # 2. Taux d'épargne faible
+        if curr["income"] > 0 and curr["savings_rate"] < 10:
+            notifications.append({
+                "title": "📉 Taux d'épargne faible",
+                "body": f"Ton taux d'épargne ce mois est de {curr['savings_rate']:.1f}%. Vise au moins 15% pour une santé financière stable.",
+                "type": "tip",
+            })
+
+        # 3. Objectif proche d'être atteint
+        for goal in self.goals:
+            target = float(goal.target_amount)
+            current = float(goal.current_amount)
+            if target > 0:
+                pct = current / target * 100
+                if 80 <= pct < 100:
+                    notifications.append({
+                        "title": f"🎯 Objectif presque atteint",
+                        "body": f"Tu es à {pct:.0f}% de ton objectif « {goal.title} » ! Plus que {target - current:,.0f}$ à accumuler.",
+                        "type": "goal",
+                    })
+                elif pct >= 100:
+                    notifications.append({
+                        "title": f"🏆 Objectif atteint !",
+                        "body": f"Félicitations ! Tu as atteint ton objectif « {goal.title} » ({target:,.0f}$).",
+                        "type": "goal",
+                    })
+
+        # 4. Dépense anormalement élevée (>3x la moyenne journalière)
+        days_elapsed = max(now.day, 1)
+        daily_avg = curr["expenses"] / days_elapsed if days_elapsed > 0 else 0
+        recent_txs = [(t, c) for t, c in self.transactions if t.date >= (now - timedelta(days=3)).strftime("%Y-%m-%d")]
+        for t, c in recent_txs:
+            if c.type == "expense" and float(t.amount) > daily_avg * 3 and daily_avg > 0:
+                notifications.append({
+                    "title": "🔍 Transaction inhabituelle",
+                    "body": f"Une dépense de {float(t.amount):,.0f}$ en {c.name} le {t.date} dépasse ta moyenne journalière ({daily_avg:,.0f}$/j).",
+                    "type": "anomaly",
+                })
+                break  # 1 seule anomalie à la fois
+
+        # 5. Bonne performance d'épargne
+        if curr["savings_rate"] >= 25 and curr["income"] > 0:
+            notifications.append({
+                "title": "🌟 Excellente épargne !",
+                "body": f"Bravo ! Ton taux d'épargne de {curr['savings_rate']:.1f}% ce mois est excellent. Continue sur cette lancée !",
+                "type": "tip",
+            })
+
+        return notifications
+
+    def generate_weekly_report(self) -> str:
+        """Génère un rapport hebdomadaire Markdown personnalisé via Groq ou heuristique."""
+        now = datetime.now()
+        week_start = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
+        week_end = now.strftime("%Y-%m-%d")
+
+        # Stats de la semaine
+        week_stats = self._get_monthly_stats(week_start, week_end)
+        curr_start, curr_end = self._get_current_month_boundaries()
+        curr = self._get_monthly_stats(curr_start, curr_end)
+        last_start, last_end = self._get_last_month_boundaries()
+        last = self._get_monthly_stats(last_start, last_end)
+
+        context = f"""Génère un rapport hebdomadaire financier concis et motivant pour l'utilisateur NexLedger.
+
+Données de cette semaine ({week_start} → {week_end}) :
+- Revenus : {week_stats['income']:,.2f} $
+- Dépenses : {week_stats['expenses']:,.2f} $
+- Net : {week_stats['net']:+,.2f} $
+
+Données du mois en cours :
+- Revenus : {curr['income']:,.2f} $
+- Dépenses : {curr['expenses']:,.2f} $
+- Taux d'épargne : {curr['savings_rate']:.1f}%
+
+Comparaison mois dernier :
+- Dépenses mois dernier : {last['expenses']:,.2f} $
+- Évolution dépenses : {((curr['expenses'] - last['expenses']) / last['expenses'] * 100) if last['expenses'] > 0 else 0:+.1f}%
+
+Objectifs en cours : {len(self.goals)}
+Actifs totaux : {sum(float(a.balance) for a in self.assets if a.type != 'liability'):,.2f} $
+
+Le rapport doit :
+1. Commencer par un titre avec la date
+2. Donner un résumé de la semaine en 2-3 phrases
+3. Mentionner 1-2 points positifs
+4. Suggérer 1 action concrète pour la semaine prochaine
+5. Être en français, chaleureux et motivant
+6. Utiliser des emojis et du Markdown"""
+
+        groq_key = os.environ.get("GROQ_API_KEY", "")
+        if _GROQ_AVAILABLE and groq_key:
+            try:
+                client = _GroqClient(api_key=groq_key)
+                response = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    max_tokens=600,
+                    messages=[{"role": "user", "content": context}],
+                )
+                return response.choices[0].message.content
+            except Exception:
+                pass
+
+        # Fallback heuristique
+        report = f"## 📅 Rapport Hebdomadaire — Semaine du {week_start}\n\n"
+        report += f"**Cette semaine** : {week_stats['expenses']:,.0f}$ de dépenses"
+        if week_stats['income'] > 0:
+            report += f" pour {week_stats['income']:,.0f}$ de revenus"
+        report += f" (net : {week_stats['net']:+,.0f}$).\n\n"
+        if curr['savings_rate'] >= 20:
+            report += f"✅ Excellent taux d'épargne ce mois : **{curr['savings_rate']:.1f}%**. Continue !\n\n"
+        elif curr['savings_rate'] > 0:
+            report += f"⚠️ Taux d'épargne actuel : **{curr['savings_rate']:.1f}%**. Vise 20% pour plus de sécurité.\n\n"
+        report += "💡 **Action suggérée** : Passe en revue tes dépenses de la semaine et identifie une habitude à optimiser."
+        return report
+
     # ─── Context Builder ──────────────────────────────────────────────────────
 
     def _build_financial_context(self) -> str:

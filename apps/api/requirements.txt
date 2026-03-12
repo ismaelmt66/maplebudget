@@ -9,3 +9,6 @@ anthropic
 groq
 python-dotenv
 python-dateutil
+pyotp
+qrcode[pil]
+plaid-python

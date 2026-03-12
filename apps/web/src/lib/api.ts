@@ -483,3 +483,67 @@ export type SearchResults = {
 export async function globalSearch(q: string): Promise<SearchResults> {
   return apiFetch(`/search?q=${encodeURIComponent(q)}`) as Promise<SearchResults>;
 }
+
+/* ---------- Notifications Proactives ---------- */
+
+export type Notification = {
+  id: number;
+  title: string;
+  body: string;
+  type: string;
+  is_read: boolean;
+  created_at: string;
+};
+
+export async function getNotifications(): Promise<Notification[]> {
+  return apiFetch("/notifications") as Promise<Notification[]>;
+}
+
+export async function markNotificationRead(id: number): Promise<void> {
+  await apiFetch(`/notifications/${id}/read`, { method: "POST" });
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  await apiFetch("/notifications/read-all", { method: "POST" });
+}
+
+/* ---------- Rapport Hebdomadaire ---------- */
+
+export type WeeklyReport = {
+  id: number;
+  week_start: string;
+  content: string;
+  created_at: string;
+};
+
+export async function getWeeklyReport(): Promise<WeeklyReport> {
+  return apiFetch("/reports/weekly") as Promise<WeeklyReport>;
+}
+
+/* ---------- Simulateur "Et si..." ---------- */
+
+export type SimulatorProjection = {
+  year: number;
+  baseline: number;
+  optimized: number;
+  difference: number;
+};
+
+export type SimulatorResult = {
+  projections: SimulatorProjection[];
+  total_saved_extra: number;
+  monthly_gain: number;
+  summary: string;
+};
+
+export async function simulateProjection(payload: {
+  monthly_savings_extra?: number;
+  expense_cuts?: { label: string; monthly_amount: number }[];
+  years?: number;
+  expected_return?: number;
+}): Promise<SimulatorResult> {
+  return apiFetch("/simulator/projection", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }) as Promise<SimulatorResult>;
+}

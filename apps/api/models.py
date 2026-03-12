@@ -16,6 +16,8 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255))
+    totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    totp_enabled: Mapped[bool] = mapped_column(default=False)
 
     categories: Mapped[list["Category"]] = relationship(back_populates="user")
     transactions: Mapped[list["Transaction"]] = relationship(back_populates="user")
@@ -143,6 +145,75 @@ class BudgetAlert(Base):
 
     user: Mapped["User"] = relationship()
     category: Mapped["Category"] = relationship()
+
+
+class AuditLog(Base):
+    """Journal d'audit — trace toutes les actions importantes."""
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    action: Mapped[str] = mapped_column(String(64))   # 'login' | 'tx_create' | 'tx_delete' | '2fa_enable' | etc.
+    details: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[str] = mapped_column(String(20))  # ISO datetime
+
+    user: Mapped["User"] = relationship()
+
+
+class Notification(Base):
+    """Notification proactive générée par Nexus."""
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    title: Mapped[str] = mapped_column(String(120))
+    body: Mapped[str] = mapped_column(String(500))
+    type: Mapped[str] = mapped_column(String(32))  # 'alert' | 'tip' | 'goal' | 'anomaly' | 'weekly'
+    is_read: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[str] = mapped_column(String(20))  # ISO datetime
+
+    user: Mapped["User"] = relationship()
+
+
+class WeeklyReport(Base):
+    """Rapport hebdomadaire généré par Nexus."""
+    __tablename__ = "weekly_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    week_start: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD (lundi)
+    content: Mapped[str] = mapped_column(String(5000))
+    created_at: Mapped[str] = mapped_column(String(20))
+
+    user: Mapped["User"] = relationship()
+
+
+class HouseholdMember(Base):
+    """Lien entre un foyer partagé (couple/famille) et ses membres."""
+    __tablename__ = "household_members"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))   # who created the household
+    member_id: Mapped[int] = mapped_column(ForeignKey("users.id"))  # invited member
+    role: Mapped[str] = mapped_column(String(16), default="member")  # 'owner' | 'member'
+    joined_at: Mapped[str] = mapped_column(String(20))  # ISO datetime
+
+    owner: Mapped["User"] = relationship(foreign_keys=[owner_id])
+    member: Mapped["User"] = relationship(foreign_keys=[member_id])
+
+
+class HouseholdInvite(Base):
+    """Invitation par email pour rejoindre un foyer."""
+    __tablename__ = "household_invites"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    inviter_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    invite_email: Mapped[str] = mapped_column(String(255))
+    token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending")  # 'pending'|'accepted'|'declined'
+    created_at: Mapped[str] = mapped_column(String(20))
+
+    inviter: Mapped["User"] = relationship()
 
 
 class RecurringTransaction(Base):

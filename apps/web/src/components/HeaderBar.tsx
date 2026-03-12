@@ -9,6 +9,7 @@ import { archiveChatHistory } from "@/lib/useChatHistory";
 import QuickAddTransaction from "./QuickAddTransaction";
 import { Logo } from "./Logo";
 import GlobalSearch from "./GlobalSearch";
+import NotificationBell from "./NotificationBell";
 
 function NavLink({ href, label, icon }: { href: string; label: string; icon?: React.ReactNode }) {
   const pathname = usePathname();
@@ -207,12 +208,25 @@ export default function HeaderBar() {
                 <DropdownItem href="/subscriptions" label="Abonnements" desc="Traqueur de frais fixes" icon={Icons.Transactions} />
                 <DropdownItem href="/goals" label="Objectifs" desc="Épargnez pour l'avenir" icon={Icons.Goals} />
                 <DropdownItem href="/categories" label="Catégories & Budgets" desc="Organisez vos dépenses" icon={Icons.Categories} />
+                <DropdownItem href="/calendar" label="Calendrier" desc="Transactions jour par jour" icon={Icons.Achievements} />
+                <DropdownItem href="/canada" label="🍁 REER / CELI" desc="Optimiseur fiscal canadien" icon={Icons.Goals} />
+                <DropdownItem href="/bank" label="🏦 Connexion Bancaire" desc="Importez vos transactions auto" icon={Icons.Patrimoine} />
               </Dropdown>
 
               <Dropdown label="Intelligence" icon={Icons.Magic}>
                 <DropdownItem href="/coach" label="Nexus" desc="Votre assistant financier IA" icon={Icons.Coach} />
+                <DropdownItem href="/simulator" label="Simulateur" desc="Et si j'économisais plus ?" icon={Icons.Magic} />
+                <DropdownItem href="/challenges" label="Défis" desc="Défis financiers hebdomadaires" icon={Icons.Achievements} />
+                <DropdownItem href="/community" label="Score Communautaire" desc="Comparez vos habitudes anonymement" icon={Icons.Analytics} />
                 <DropdownItem href="/analytics" label="Analytique" desc="Graphiques et tendances avancés" icon={Icons.Analytics} />
                 <DropdownItem href="/achievements" label="Trophées" desc="Récompenses de progression" icon={Icons.Achievements} />
+              </Dropdown>
+
+              <div className="w-px h-6 bg-white/10 mx-2" />
+
+              <Dropdown label="Social" icon={Icons.Coach}>
+                <DropdownItem href="/household" label="Mode Couple / Famille" desc="Budget partagé du foyer" icon={Icons.Goals} />
+                <DropdownItem href="/community" label="Score Communautaire" desc="Benchmark anonyme" icon={Icons.Analytics} />
               </Dropdown>
             </nav>
           )}
@@ -227,6 +241,9 @@ export default function HeaderBar() {
                   </div>
                   <span className="text-sm font-medium text-white/80">{email?.split('@')[0]}</span>
                 </div>
+                <Link href="/settings" className="p-2 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-all border border-transparent hover:border-white/10" aria-label="Paramètres" title="Paramètres">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </Link>
                 <button onClick={logout} className="p-2 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-all border border-transparent hover:border-white/10" aria-label="Déconnexion" title="Déconnexion">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
                 </button>
@@ -246,6 +263,7 @@ export default function HeaderBar() {
             {token && (
               <div className="flex items-center gap-2">
                 <GlobalSearch />
+                <NotificationBell />
 
                 <button
                   onClick={() => setIsQuickAddOpen(true)}
@@ -282,11 +300,20 @@ export default function HeaderBar() {
           <Link href="/subscriptions" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Abonnements</Link>
           <Link href="/goals" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Objectifs</Link>
           <Link href="/categories" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Catégories & Budgets</Link>
+          <Link href="/calendar" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Calendrier</Link>
+          <Link href="/canada" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">🍁 REER / CELI</Link>
+          <Link href="/bank" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">🏦 Connexion Bancaire</Link>
           <div className="text-xs font-bold text-purple-400/60 uppercase tracking-widest px-2 mt-2">Intelligence</div>
           <Link href="/coach" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Coach IA</Link>
+          <Link href="/simulator" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Simulateur</Link>
+          <Link href="/challenges" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Défis</Link>
           <Link href="/analytics" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Analytique</Link>
           <Link href="/achievements" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Trophées</Link>
+          <Link href="/community" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Score Communautaire</Link>
+          <div className="text-xs font-bold text-pink-400/60 uppercase tracking-widest px-2 mt-2">Social</div>
+          <Link href="/household" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">👥 Mode Couple / Famille</Link>
           <div className="h-px w-full bg-white/10 my-2"></div>
+          <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">⚙️ Paramètres</Link>
           <button onClick={logout} className="px-4 py-3 rounded-xl text-red-400 font-medium text-left">Déconnexion</button>
         </div>
       )}

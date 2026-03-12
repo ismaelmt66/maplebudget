@@ -175,9 +175,28 @@ class BankConnectionOut(BaseModel):
     id: int
     institution_name: str
     item_id: str
+    tx_count: Optional[int] = 0
+    last_sync: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+class BankLinkTokenOut(BaseModel):
+    link_token: str
+    demo_mode: bool
+    demo_banks: Optional[List[dict]] = None
+
+
+class BankExchangeRequest(BaseModel):
+    public_token: str
+    institution_id: Optional[str] = None  # for demo mode
+
+
+class BankSyncResult(BaseModel):
+    added: int
+    skipped: int
+    institution_name: str
 
 class AssetCreate(BaseModel):
     name: str
@@ -376,7 +395,153 @@ class NetWorthHistoryPoint(BaseModel):
     net_worth: float
 
 
+# --- Sécurité / 2FA ---
+
+class TwoFASetupOut(BaseModel):
+    secret: str
+    provisioning_uri: str
+    qr_data: str  # data URI base64 de l'image QR
+
+
+class TwoFAVerifyRequest(BaseModel):
+    code: str  # Code TOTP 6 chiffres
+
+
+class AuditLogOut(BaseModel):
+    id: int
+    action: str
+    details: Optional[str] = None
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
+
+# --- Notifications Proactives ---
+
+class NotificationOut(BaseModel):
+    id: int
+    title: str
+    body: str
+    type: str
+    is_read: bool
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
+
+class WeeklyReportOut(BaseModel):
+    id: int
+    week_start: str
+    content: str
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
+
+# --- Simulateur "Et si..." ---
+
+class SimulatorRequest(BaseModel):
+    monthly_savings_extra: float = 0      # $ de plus épargnés/mois
+    expense_cuts: List[dict] = []         # [{label, monthly_amount}]
+    years: int = 10                       # horizon en années
+    expected_return: float = 5.0          # taux annuel %
+
+
+class SimulatorProjection(BaseModel):
+    year: int
+    baseline: float      # sans changement
+    optimized: float     # avec les changements
+    difference: float
+
+
+class SimulatorResult(BaseModel):
+    projections: List[SimulatorProjection]
+    total_saved_extra: float
+    monthly_gain: float
+    summary: str
+
+
 # --- Reports ---
+
+# --- Canada REER/CELI ---
+
+class CanadaOptimizerRequest(BaseModel):
+    annual_income: float
+    province: str  # 'QC' | 'ON' | 'BC' | 'AB' | 'other'
+    available_savings: float
+    age: int
+    existing_rrsp: float = 0.0
+    existing_tfsa: float = 0.0
+    rrsp_room: Optional[float] = None  # If None, we estimate it
+
+
+class CanadaScenario(BaseModel):
+    name: str
+    rrsp_contribution: float
+    tfsa_contribution: float
+    tax_refund: float
+    net_cost: float         # available_savings - tax_refund
+    projected_10y: float
+    projected_20y: float
+    projected_30y: float
+
+
+class CanadaOptimizerResult(BaseModel):
+    marginal_rate: float
+    rrsp_room: float
+    tfsa_room: float
+    recommended_rrsp: float
+    recommended_tfsa: float
+    tax_refund: float
+    scenarios: List[CanadaScenario]
+    tips: List[str]
+
+
+# --- Mode Couple / Foyer ---
+
+class HouseholdInviteRequest(BaseModel):
+    email: str
+
+
+class HouseholdInviteOut(BaseModel):
+    id: int
+    invite_email: str
+    token: str
+    status: str
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
+
+class HouseholdMemberOut(BaseModel):
+    member_id: int
+    email: str
+    role: str
+    joined_at: str
+
+
+class HouseholdOut(BaseModel):
+    owner_email: str
+    members: List[HouseholdMemberOut]
+    pending_invites: List[HouseholdInviteOut]
+
+
+# --- Score Communautaire ---
+
+class CommunityBenchmark(BaseModel):
+    your_savings_rate: float
+    avg_savings_rate: float
+    your_expense_ratio: float
+    avg_expense_ratio: float
+    your_score: int
+    percentile: int
+    badge: str
+    tips: List[str]
+
 
 class ReportSummary(BaseModel):
     generated_at: str

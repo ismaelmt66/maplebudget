@@ -9,10 +9,14 @@ catégories, transactions, objectifs et le tableau de bord.
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+import csv
+import io
+import secrets
 from sqlalchemy import func
 from typing import Optional, List
 from datetime import date as dt_date, datetime
@@ -23,6 +27,7 @@ import models
 import schemas
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from routers import subscriptions as subscriptions_router
+from services import bank_service
 
 app = FastAPI(title="NexLedger API", version="0.4.0")
 
@@ -73,6 +78,10 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_access_token(subject=str(user.id))
+    # Journal d'audit
+    db.add(models.AuditLog(user_id=user.id, action="login",
+        details=f"Connexion réussie", created_at=datetime.now().isoformat()))
+    db.commit()
     return schemas.TokenOut(access_token=token)
 
 
@@ -1544,4 +1553,1097 @@ def run_migrations():
                 created_at TEXT NOT NULL
             )
         """))
+
+        # Colonnes 2FA sur users
+        try:
+            conn.execute(sql_text("SELECT totp_secret FROM users LIMIT 1"))
+        except Exception:
+            conn.execute(sql_text("ALTER TABLE users ADD COLUMN totp_secret TEXT"))
+            conn.execute(sql_text("ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0"))
+            conn.commit()
+
+        # Journal d'audit
+        conn.execute(sql_text("""
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                action TEXT NOT NULL,
+                details TEXT,
+                created_at TEXT NOT NULL
+            )
+        """))
         conn.commit()
+
+        # Notifications proactives
+        conn.execute(sql_text("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                title TEXT NOT NULL,
+                body TEXT NOT NULL,
+                type TEXT NOT NULL DEFAULT 'tip',
+                is_read INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL
+            )
+        """))
+
+        # Rapports hebdomadaires
+        conn.execute(sql_text("""
+            CREATE TABLE IF NOT EXISTS weekly_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                week_start TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        """))
+
+        # Mode Couple / Foyer
+        conn.execute(sql_text("""
+            CREATE TABLE IF NOT EXISTS household_members (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                owner_id INTEGER NOT NULL REFERENCES users(id),
+                member_id INTEGER NOT NULL REFERENCES users(id),
+                role TEXT NOT NULL DEFAULT 'member',
+                joined_at TEXT NOT NULL
+            )
+        """))
+        conn.execute(sql_text("""
+            CREATE TABLE IF NOT EXISTS household_invites (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                inviter_id INTEGER NOT NULL REFERENCES users(id),
+                invite_email TEXT NOT NULL,
+                token TEXT NOT NULL UNIQUE,
+                status TEXT NOT NULL DEFAULT 'pending',
+                created_at TEXT NOT NULL
+            )
+        """))
+        conn.commit()
+
+
+# ---------- Notifications Proactives ----------
+
+from services.ai_engine import FinancialAIEngine
+
+@app.get("/notifications", response_model=List[schemas.NotificationOut])
+def get_notifications(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    now_str = datetime.now().isoformat()
+    today = dt_date.today().strftime("%Y-%m-%d")
+    existing_today = (
+        db.query(models.Notification)
+        .filter(models.Notification.user_id == current.id, models.Notification.created_at >= today)
+        .count()
+    )
+    if existing_today == 0:
+        engine = FinancialAIEngine(db, current.id)
+        for n in engine.generate_proactive_notifications():
+            db.add(models.Notification(
+                user_id=current.id, title=n["title"], body=n["body"],
+                type=n["type"], is_read=False, created_at=now_str,
+            ))
+        db.commit()
+
+    return (
+        db.query(models.Notification)
+        .filter(models.Notification.user_id == current.id)
+        .order_by(models.Notification.created_at.desc())
+        .limit(20)
+        .all()
+    )
+
+
+@app.post("/notifications/{notif_id}/read")
+def mark_notification_read(
+    notif_id: int,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    n = db.query(models.Notification).filter(
+        models.Notification.id == notif_id,
+        models.Notification.user_id == current.id,
+    ).first()
+    if not n:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    n.is_read = True
+    db.commit()
+    return {"ok": True}
+
+
+@app.post("/notifications/read-all")
+def mark_all_read(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    db.query(models.Notification).filter(
+        models.Notification.user_id == current.id,
+        models.Notification.is_read == False,
+    ).update({"is_read": True})
+    db.commit()
+    return {"ok": True}
+
+
+# ---------- Rapport Hebdomadaire ----------
+
+@app.get("/reports/weekly", response_model=schemas.WeeklyReportOut)
+def get_weekly_report(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    from datetime import timedelta
+    now = datetime.now()
+    week_start = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
+    existing = (
+        db.query(models.WeeklyReport)
+        .filter(models.WeeklyReport.user_id == current.id, models.WeeklyReport.week_start == week_start)
+        .first()
+    )
+    if existing:
+        return existing
+    engine = FinancialAIEngine(db, current.id)
+    report = models.WeeklyReport(
+        user_id=current.id, week_start=week_start,
+        content=engine.generate_weekly_report(), created_at=now.isoformat(),
+    )
+    db.add(report)
+    db.commit()
+    db.refresh(report)
+    return report
+
+
+# ---------- Simulateur "Et si..." ----------
+
+@app.post("/simulator/projection", response_model=schemas.SimulatorResult)
+def simulate_projection(
+    payload: schemas.SimulatorRequest,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    engine = FinancialAIEngine(db, current.id)
+    curr_start, curr_end = engine._get_current_month_boundaries()
+    curr = engine._get_monthly_stats(curr_start, curr_end)
+    last_start, last_end = engine._get_last_month_boundaries()
+    last = engine._get_monthly_stats(last_start, last_end)
+
+    ref_income = curr["income"] if curr["income"] > 0 else last["income"]
+    ref_expenses = curr["expenses"] if curr["expenses"] > 0 else last["expenses"]
+    baseline_monthly = max(ref_income - ref_expenses, 0)
+    total_cuts = sum(item.get("monthly_amount", 0) for item in payload.expense_cuts)
+    optimized_monthly = baseline_monthly + payload.monthly_savings_extra + total_cuts
+    monthly_gain = optimized_monthly - baseline_monthly
+
+    r = payload.expected_return / 100 / 12
+    projections = []
+    for year in range(1, payload.years + 1):
+        months = year * 12
+        if r > 0:
+            base = baseline_monthly * ((1 + r) ** months - 1) / r
+            opt = optimized_monthly * ((1 + r) ** months - 1) / r
+        else:
+            base = baseline_monthly * months
+            opt = optimized_monthly * months
+        projections.append(schemas.SimulatorProjection(
+            year=year, baseline=round(base, 2),
+            optimized=round(opt, 2), difference=round(opt - base, 2),
+        ))
+
+    total_extra = projections[-1].difference if projections else 0
+    summary = (
+        f"En économisant {monthly_gain:,.0f}$ de plus par mois sur {payload.years} ans, "
+        f"tu accumules {total_extra:,.0f}$ supplémentaires"
+        f" (rendement {payload.expected_return:.1f}%/an)."
+    )
+    return schemas.SimulatorResult(
+        projections=projections,
+        total_saved_extra=round(total_extra, 2),
+        monthly_gain=round(monthly_gain, 2),
+        summary=summary,
+    )
+
+
+# ---------- Export CSV ----------
+
+@app.get("/transactions/export/csv")
+def export_transactions_csv(
+    from_date: Optional[str] = Query(None),
+    to_date: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    txs = (
+        db.query(models.Transaction, models.Category)
+        .join(models.Category, models.Transaction.category_id == models.Category.id)
+        .filter(models.Transaction.user_id == current.id)
+        .order_by(models.Transaction.date.desc())
+        .all()
+    )
+    if from_date:
+        txs = [(t, c) for t, c in txs if t.date >= from_date]
+    if to_date:
+        txs = [(t, c) for t, c in txs if t.date <= to_date]
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Date", "Montant", "Type", "Catégorie", "Note"])
+    for t, c in txs:
+        writer.writerow([
+            t.date,
+            f"{float(t.amount):.2f}",
+            c.type,
+            c.name,
+            t.note or "",
+        ])
+
+    output.seek(0)
+    filename = f"nexledger-transactions-{dt_date.today().strftime('%Y-%m-%d')}.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+# ---------- Défis Financiers ----------
+
+@app.get("/challenges/weekly")
+def get_weekly_challenge(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Retourne le défi de la semaine basé sur les habitudes de l'utilisateur."""
+    from services.ai_engine import FinancialAIEngine
+    from datetime import timedelta
+
+    engine = FinancialAIEngine(db, current.id)
+    curr_start, curr_end = engine._get_current_month_boundaries()
+    curr = engine._get_monthly_stats(curr_start, curr_end)
+    last_start, last_end = engine._get_last_month_boundaries()
+    last = engine._get_monthly_stats(last_start, last_end)
+
+    challenges = []
+
+    # Défi basé sur la catégorie de dépense la plus élevée
+    if curr["by_category"]:
+        top_cat = max(curr["by_category"], key=lambda k: curr["by_category"][k])
+        top_amt = curr["by_category"][top_cat]
+        target = round(top_amt * 0.8, 2)
+        challenges.append({
+            "id": "reduce_top",
+            "title": f"Réduis tes dépenses {top_cat}",
+            "description": f"Tu as dépensé {top_amt:,.0f}$ en {top_cat} ce mois. Vise {target:,.0f}$ la semaine prochaine !",
+            "target_amount": target,
+            "category": top_cat,
+            "type": "reduce",
+            "reward": "🏅 Maître de la Discipline",
+        })
+
+    # Défi épargne
+    ref_income = curr["income"] if curr["income"] > 0 else last["income"]
+    if ref_income > 0:
+        target_savings = round(ref_income * 0.20 / 4, 2)  # 20% du revenu mensuel / 4 semaines
+        challenges.append({
+            "id": "save_weekly",
+            "title": "Objectif épargne semaine",
+            "description": f"Épargne {target_savings:,.0f}$ cette semaine pour atteindre un taux d'épargne de 20%.",
+            "target_amount": target_savings,
+            "category": None,
+            "type": "save",
+            "reward": "💰 Épargnant Assidu",
+        })
+
+    # Défi zéro dépense superflue
+    challenges.append({
+        "id": "no_impulse",
+        "title": "Semaine sans achat impulsif",
+        "description": "Évite tout achat non planifié cette semaine. Chaque achat doit être nécessaire.",
+        "target_amount": 0,
+        "category": None,
+        "type": "behavior",
+        "reward": "🧘 Zen Financier",
+    })
+
+    # Retourner le défi le plus pertinent (le premier)
+    if not challenges:
+        return {"challenge": None}
+
+    # Rotation par semaine
+    week_num = datetime.now().isocalendar()[1]
+    selected = challenges[week_num % len(challenges)]
+    return {"challenge": selected, "all_challenges": challenges}
+
+
+# ---------- Rapport PDF Mensuel ----------
+
+@app.get("/reports/monthly/pdf")
+def export_monthly_pdf(
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Génère un rapport HTML/PDF mensuel complet."""
+    import calendar as cal_mod
+    today = dt_date.today()
+    target_year = year or today.year
+    target_month = month or today.month
+    month_start = f"{target_year}-{target_month:02d}-01"
+    last_day = cal_mod.monthrange(target_year, target_month)[1]
+    month_end = f"{target_year}-{target_month:02d}-{last_day:02d}"
+    month_names = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"]
+    month_name = month_names[target_month - 1]
+
+    txs = (
+        db.query(models.Transaction, models.Category)
+        .join(models.Category, models.Transaction.category_id == models.Category.id)
+        .filter(models.Transaction.user_id == current.id, models.Transaction.date >= month_start, models.Transaction.date <= month_end)
+        .order_by(models.Transaction.date.desc())
+        .all()
+    )
+
+    income = sum(float(t.amount) for t, c in txs if c.type == "income")
+    expenses = sum(float(t.amount) for t, c in txs if c.type == "expense")
+    net = income - expenses
+    savings_rate = (net / income * 100) if income > 0 else 0
+
+    by_category: dict = {}
+    for t, c in txs:
+        if c.type == "expense":
+            by_category[c.name] = by_category.get(c.name, 0) + float(t.amount)
+
+    html_rows = "".join(
+        f'<tr><td style="padding:6px 8px;border-bottom:1px solid #1e1e2e">{t.date}</td>'
+        f'<td style="padding:6px 8px;border-bottom:1px solid #1e1e2e">{t.note or c.name}</td>'
+        f'<td style="padding:6px 8px;border-bottom:1px solid #1e1e2e">{c.name}</td>'
+        f'<td style="padding:6px 8px;border-bottom:1px solid #1e1e2e;text-align:right;color:{"#22c55e" if c.type=="income" else "#ef4444"};font-weight:600">{"+" if c.type=="income" else "-"}{float(t.amount):,.2f}$</td></tr>'
+        for t, c in txs[:50]
+    )
+    cat_rows = "".join(
+        f'<tr><td style="padding:6px 8px;border-bottom:1px solid #1e1e2e">{cat}</td>'
+        f'<td style="padding:6px 8px;border-bottom:1px solid #1e1e2e;text-align:right">{amt:,.2f}$</td>'
+        f'<td style="padding:6px 8px;border-bottom:1px solid #1e1e2e;text-align:right">{(amt/expenses*100) if expenses>0 else 0:.1f}%</td></tr>'
+        for cat, amt in sorted(by_category.items(), key=lambda x: -x[1])[:10]
+    )
+
+    html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>NexLedger — Rapport {month_name} {target_year}</title>
+<style>
+body{{font-family:Arial,sans-serif;background:#0d0d1a;color:#e2e8f0;margin:0;padding:40px;}}
+h1{{font-size:26px;color:#a78bfa;margin-bottom:4px;}}
+.sub{{color:#64748b;font-size:13px;margin-bottom:28px;}}
+.kpi-grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px;}}
+.kpi{{background:#111827;border:1px solid #1f2937;border-radius:12px;padding:16px;text-align:center;}}
+.kpi .label{{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;}}
+.kpi .value{{font-size:22px;font-weight:700;margin-top:4px;}}
+.green{{color:#22c55e;}}.red{{color:#ef4444;}}.purple{{color:#a78bfa;}}.blue{{color:#60a5fa;}}
+table{{width:100%;border-collapse:collapse;background:#111827;border-radius:10px;overflow:hidden;margin-bottom:20px;}}
+th{{background:#1f2937;padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase;}}
+th:last-child,td:last-child{{text-align:right;}}
+td{{color:#d1d5db;font-size:13px;}}
+h2{{font-size:15px;color:#a78bfa;margin:24px 0 10px;border-left:3px solid #7c3aed;padding-left:10px;}}
+.footer{{text-align:center;color:#374151;font-size:11px;margin-top:40px;border-top:1px solid #1f2937;padding-top:20px;}}
+@media print{{body{{background:white;color:black;}} .kpi{{border:1px solid #ccc;}} table{{border:1px solid #ccc;}}}}
+</style></head><body>
+<h1>📊 NexLedger — Rapport Mensuel</h1>
+<div class="sub">{month_name} {target_year} &nbsp;·&nbsp; Généré le {today.strftime('%d/%m/%Y')} &nbsp;·&nbsp; {current.email}</div>
+<div class="kpi-grid">
+  <div class="kpi"><div class="label">Revenus</div><div class="value green">{income:,.0f}$</div></div>
+  <div class="kpi"><div class="label">Dépenses</div><div class="value red">{expenses:,.0f}$</div></div>
+  <div class="kpi"><div class="label">Net</div><div class="value purple">{net:+,.0f}$</div></div>
+  <div class="kpi"><div class="label">Taux épargne</div><div class="value blue">{savings_rate:.1f}%</div></div>
+</div>
+<h2>Répartition par catégorie</h2>
+<table><thead><tr><th>Catégorie</th><th>Montant</th><th>Part</th></tr></thead><tbody>{cat_rows}</tbody></table>
+<h2>Transactions ({len(txs)})</h2>
+<table><thead><tr><th>Date</th><th>Description</th><th>Catégorie</th><th>Montant</th></tr></thead><tbody>{html_rows}</tbody></table>
+{"<p style='color:#6b7280;font-size:12px'>... et " + str(len(txs)-50) + " transactions supplémentaires.</p>" if len(txs)>50 else ""}
+<div class="footer">NexLedger — Portfolio FinTech &nbsp;·&nbsp; Ce rapport est généré automatiquement &nbsp;·&nbsp; Pour imprimer en PDF : Ctrl+P</div>
+</body></html>"""
+
+    filename = f"nexledger-{month_name.lower()}-{target_year}.html"
+    return StreamingResponse(iter([html]), media_type="text/html; charset=utf-8",
+        headers={"Content-Disposition": f"inline; filename={filename}"})
+
+
+# ---------- Helpers audit ----------
+
+def _log_audit(db: Session, user_id: int, action: str, details: str = None):
+    db.add(models.AuditLog(
+        user_id=user_id, action=action, details=details,
+        created_at=datetime.now().isoformat(),
+    ))
+    db.commit()
+
+
+# ---------- 2FA TOTP ----------
+
+@app.post("/auth/2fa/setup", response_model=schemas.TwoFASetupOut)
+def setup_2fa(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Génère un secret TOTP et retourne l'URI + QR code en base64."""
+    try:
+        import pyotp, qrcode, base64
+        from io import BytesIO
+    except ImportError:
+        raise HTTPException(status_code=500, detail="pyotp/qrcode non installé. Lancez: pip install pyotp qrcode[pil]")
+
+    secret = pyotp.random_base32()
+    current.totp_secret = secret
+    db.commit()
+
+    totp = pyotp.TOTP(secret)
+    uri = totp.provisioning_uri(name=current.email, issuer_name="NexLedger")
+
+    img = qrcode.make(uri)
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    qr_b64 = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+    return schemas.TwoFASetupOut(secret=secret, provisioning_uri=uri, qr_data=qr_b64)
+
+
+@app.post("/auth/2fa/verify")
+def verify_2fa(
+    payload: schemas.TwoFAVerifyRequest,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Vérifie le code TOTP et active le 2FA si correct."""
+    try:
+        import pyotp
+    except ImportError:
+        raise HTTPException(status_code=500, detail="pyotp non installé")
+
+    if not current.totp_secret:
+        raise HTTPException(status_code=400, detail="2FA non initialisé. Appelez /auth/2fa/setup d'abord.")
+
+    totp = pyotp.TOTP(current.totp_secret)
+    if not totp.verify(payload.code, valid_window=1):
+        raise HTTPException(status_code=400, detail="Code invalide ou expiré.")
+
+    current.totp_enabled = True
+    db.commit()
+    _log_audit(db, current.id, "2fa_enable")
+    return {"ok": True, "message": "2FA activé avec succès."}
+
+
+@app.post("/auth/2fa/disable")
+def disable_2fa(
+    payload: schemas.TwoFAVerifyRequest,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Désactive le 2FA après vérification du code."""
+    try:
+        import pyotp
+    except ImportError:
+        raise HTTPException(status_code=500, detail="pyotp non installé")
+
+    if not current.totp_enabled or not current.totp_secret:
+        raise HTTPException(status_code=400, detail="2FA non activé.")
+
+    totp = pyotp.TOTP(current.totp_secret)
+    if not totp.verify(payload.code, valid_window=1):
+        raise HTTPException(status_code=400, detail="Code invalide.")
+
+    current.totp_enabled = False
+    current.totp_secret = None
+    db.commit()
+    _log_audit(db, current.id, "2fa_disable")
+    return {"ok": True}
+
+
+@app.get("/auth/2fa/status")
+def get_2fa_status(current: models.User = Depends(get_current_user)):
+    return {"enabled": current.totp_enabled}
+
+
+# ---------- Canada REER/CELI Optimizer ----------
+
+# 2024 federal + provincial marginal rates (top bracket approximation per income band)
+_PROVINCIAL_RATES = {
+    "QC": [(0, 15, 0.15+0.14), (15, 50, 0.205+0.19), (50, 100, 0.26+0.24), (100, 165, 0.29+0.2575), (165, 1e9, 0.33+0.2575)],
+    "ON": [(0, 15, 0.15+0.0505), (15, 50, 0.205+0.0915), (50, 100, 0.26+0.1116), (100, 220, 0.29+0.1216), (220, 1e9, 0.33+0.1316)],
+    "BC": [(0, 15, 0.15+0.0506), (15, 45, 0.205+0.077), (45, 91, 0.26+0.105), (91, 113, 0.29+0.1229), (113, 1e9, 0.33+0.205)],
+    "AB": [(0, 15, 0.15+0.10), (15, 49, 0.205+0.10), (49, 100, 0.26+0.10), (100, 150, 0.29+0.12), (150, 1e9, 0.33+0.15)],
+    "other": [(0, 15, 0.15+0.06), (15, 50, 0.205+0.085), (50, 100, 0.26+0.10), (100, 220, 0.29+0.12), (220, 1e9, 0.33+0.15)],
+}
+
+def _marginal_rate(income_k: float, province: str) -> float:
+    brackets = _PROVINCIAL_RATES.get(province, _PROVINCIAL_RATES["other"])
+    for lo, hi, rate in brackets:
+        if lo <= income_k < hi:
+            return rate
+    return 0.53
+
+def _compound(principal: float, annual_rate: float, years: int) -> float:
+    return principal * ((1 + annual_rate) ** years)
+
+@app.post("/canada/rrsp-tfsa", response_model=schemas.CanadaOptimizerResult)
+def canada_optimizer(
+    payload: schemas.CanadaOptimizerRequest,
+    current: models.User = Depends(get_current_user),
+):
+    """Calcule l'allocation optimale REER/CELI selon le profil fiscal canadien."""
+    income_k = payload.annual_income / 1000
+    province = payload.province if payload.province in _PROVINCIAL_RATES else "other"
+    marginal = _marginal_rate(income_k, province)
+
+    # REER room: 18% of previous year income, capped at $31,560 (2024 limit)
+    rrsp_room = payload.rrsp_room if payload.rrsp_room is not None else min(payload.annual_income * 0.18, 31560)
+    # TFSA room: $7,000/year 2024. Cumulative since 2009 (if age >= 18 in 2009)
+    years_eligible = max(0, min(payload.age - 18, 16))  # 2009–2024
+    tfsa_room = 7000 + years_eligible * 6500  # simplified cumulative
+
+    available = payload.available_savings
+    # Recommended: maximize REER first if marginal rate > 30%, else TFSA first
+    if marginal >= 0.30:
+        rec_rrsp = min(available, rrsp_room)
+        rec_tfsa = min(available - rec_rrsp, tfsa_room)
+    else:
+        rec_tfsa = min(available, tfsa_room)
+        rec_rrsp = min(available - rec_tfsa, rrsp_room)
+
+    tax_refund = rec_rrsp * marginal
+
+    # Scenarios
+    def make_scenario(name: str, rrsp: float, tfsa: float) -> schemas.CanadaScenario:
+        refund = rrsp * marginal
+        total_invested = rrsp + tfsa
+        # RRSP grows tax-deferred at 6%, taxed at 25% on withdrawal
+        rrsp_10 = _compound(rrsp, 0.06, 10) * 0.75
+        rrsp_20 = _compound(rrsp, 0.06, 20) * 0.75
+        rrsp_30 = _compound(rrsp, 0.06, 30) * 0.75
+        # TFSA grows tax-free at 5%
+        tfsa_10 = _compound(tfsa, 0.05, 10)
+        tfsa_20 = _compound(tfsa, 0.05, 20)
+        tfsa_30 = _compound(tfsa, 0.05, 30)
+        return schemas.CanadaScenario(
+            name=name,
+            rrsp_contribution=rrsp,
+            tfsa_contribution=tfsa,
+            tax_refund=refund,
+            net_cost=rrsp + tfsa - refund,
+            projected_10y=rrsp_10 + tfsa_10,
+            projected_20y=rrsp_20 + tfsa_20,
+            projected_30y=rrsp_30 + tfsa_30,
+        )
+
+    scenarios = [
+        make_scenario("Optimisé (recommandé)", rec_rrsp, rec_tfsa),
+        make_scenario("Tout en REER", min(available, rrsp_room), 0),
+        make_scenario("Tout en CELI", 0, min(available, tfsa_room)),
+        make_scenario("50% / 50%", min(available * 0.5, rrsp_room), min(available * 0.5, tfsa_room)),
+    ]
+
+    tips: list[str] = []
+    if marginal >= 0.40:
+        tips.append("Votre taux marginal est élevé (≥40%) — priorisez le REER pour réduire votre impôt immédiatement.")
+    elif marginal < 0.25:
+        tips.append("Votre taux marginal est bas — le CELI est souvent plus avantageux car les retraits sont non imposables.")
+    if payload.age < 35:
+        tips.append("À votre âge, le CELI est très puissant grâce à la croissance composée sur plusieurs décennies.")
+    if payload.age >= 50:
+        tips.append("À 71 ans, le REER doit être converti en FERR. Planifiez vos retraits dès maintenant.")
+    if rec_rrsp > 0:
+        tips.append(f"Votre remboursement d'impôt estimé pour ce REER : ${tax_refund:,.0f} — réinvestissez-le dans votre CELI!")
+    if payload.province == "QC":
+        tips.append("Au Québec, vous bénéficiez aussi d'une déduction provinciale sur le REER — double avantage fiscal.")
+
+    return schemas.CanadaOptimizerResult(
+        marginal_rate=round(marginal * 100, 1),
+        rrsp_room=rrsp_room,
+        tfsa_room=tfsa_room,
+        recommended_rrsp=rec_rrsp,
+        recommended_tfsa=rec_tfsa,
+        tax_refund=tax_refund,
+        scenarios=scenarios,
+        tips=tips,
+    )
+
+
+# ---------- Journal d'audit ----------
+
+@app.get("/audit-logs", response_model=List[schemas.AuditLogOut])
+def get_audit_logs(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    return (
+        db.query(models.AuditLog)
+        .filter(models.AuditLog.user_id == current.id)
+        .order_by(models.AuditLog.created_at.desc())
+        .limit(50)
+        .all()
+    )
+
+
+# ---------- Mode Couple / Foyer ----------
+
+@app.post("/household/invite")
+def invite_to_household(
+    payload: schemas.HouseholdInviteRequest,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Envoie une invitation à rejoindre le foyer partagé."""
+    now = datetime.utcnow().isoformat()
+    token = secrets.token_urlsafe(32)
+    invite = models.HouseholdInvite(
+        inviter_id=current.id,
+        invite_email=payload.email.lower(),
+        token=token,
+        status="pending",
+        created_at=now,
+    )
+    db.add(invite)
+    db.commit()
+    db.refresh(invite)
+    return {"message": f"Invitation envoyée à {payload.email}", "token": token}
+
+
+@app.post("/household/accept/{token}")
+def accept_household_invite(
+    token: str,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Accepte une invitation et rejoint le foyer."""
+    invite = db.query(models.HouseholdInvite).filter(
+        models.HouseholdInvite.token == token,
+        models.HouseholdInvite.status == "pending",
+    ).first()
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invitation introuvable ou déjà utilisée.")
+    if current.email.lower() != invite.invite_email.lower():
+        raise HTTPException(status_code=403, detail="Cette invitation ne vous est pas destinée.")
+
+    now = datetime.utcnow().isoformat()
+    member = models.HouseholdMember(
+        owner_id=invite.inviter_id,
+        member_id=current.id,
+        role="member",
+        joined_at=now,
+    )
+    db.add(member)
+    invite.status = "accepted"
+    db.commit()
+    return {"message": "Vous avez rejoint le foyer avec succès."}
+
+
+@app.get("/household", response_model=schemas.HouseholdOut)
+def get_household(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Retourne le foyer de l'utilisateur (membres + invitations en attente)."""
+    # Members where current user is owner
+    members_db = db.query(models.HouseholdMember).filter(
+        models.HouseholdMember.owner_id == current.id
+    ).all()
+    members_out = []
+    for m in members_db:
+        user = db.query(models.User).filter(models.User.id == m.member_id).first()
+        if user:
+            members_out.append(schemas.HouseholdMemberOut(
+                member_id=m.member_id,
+                email=user.email,
+                role=m.role,
+                joined_at=m.joined_at,
+            ))
+
+    pending = db.query(models.HouseholdInvite).filter(
+        models.HouseholdInvite.inviter_id == current.id,
+        models.HouseholdInvite.status == "pending",
+    ).all()
+
+    return schemas.HouseholdOut(
+        owner_email=current.email,
+        members=members_out,
+        pending_invites=pending,
+    )
+
+
+@app.delete("/household/members/{member_id}")
+def remove_household_member(
+    member_id: int,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Retire un membre du foyer."""
+    member = db.query(models.HouseholdMember).filter(
+        models.HouseholdMember.owner_id == current.id,
+        models.HouseholdMember.member_id == member_id,
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Membre introuvable.")
+    db.delete(member)
+    db.commit()
+    return {"message": "Membre retiré du foyer."}
+
+
+@app.get("/household/shared-dashboard")
+def household_shared_dashboard(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Tableau de bord consolidé: transactions de tous les membres du foyer."""
+    # Find all member IDs in user's household
+    members = db.query(models.HouseholdMember).filter(
+        models.HouseholdMember.owner_id == current.id
+    ).all()
+    member_ids = [current.id] + [m.member_id for m in members]
+
+    # Also check if current user is a member of someone else's household
+    as_member = db.query(models.HouseholdMember).filter(
+        models.HouseholdMember.member_id == current.id
+    ).first()
+    if as_member:
+        owner_members = db.query(models.HouseholdMember).filter(
+            models.HouseholdMember.owner_id == as_member.owner_id
+        ).all()
+        member_ids = list(set(member_ids + [as_member.owner_id] + [m.member_id for m in owner_members]))
+
+    # Aggregate transactions for the current month
+    today = dt_date.today()
+    month_prefix = f"{today.year}-{str(today.month).zfill(2)}"
+
+    txs = (
+        db.query(models.Transaction)
+        .filter(
+            models.Transaction.user_id.in_(member_ids),
+            models.Transaction.date.startswith(month_prefix),
+        )
+        .all()
+    )
+
+    cat_cache: dict[int, str] = {}
+    def _cat_type(cat_id: int) -> str:
+        if cat_id not in cat_cache:
+            c = db.query(models.Category).filter(models.Category.id == cat_id).first()
+            cat_cache[cat_id] = c.type if c else "expense"
+        return cat_cache[cat_id]
+
+    total_income = sum(float(t.amount) for t in txs if _cat_type(t.category_id) == "income")
+    total_expense = sum(float(t.amount) for t in txs if _cat_type(t.category_id) == "expense")
+
+    # Get member names
+    users_info = []
+    for uid in member_ids:
+        u = db.query(models.User).filter(models.User.id == uid).first()
+        if u:
+            user_txs = [t for t in txs if t.user_id == uid]
+            users_info.append({
+                "user_id": uid,
+                "email": u.email,
+                "tx_count": len(user_txs),
+                "total_spent": sum(float(t.amount) for t in user_txs),
+            })
+
+    return {
+        "member_count": len(member_ids),
+        "month": month_prefix,
+        "total_income": total_income,
+        "total_expense": total_expense,
+        "net": total_income - total_expense,
+        "members": users_info,
+    }
+
+
+# ---------- Score Communautaire ----------
+
+@app.get("/community/benchmark", response_model=schemas.CommunityBenchmark)
+def community_benchmark(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Compare les habitudes de l'utilisateur à la moyenne anonyme des autres."""
+    today = dt_date.today()
+    month_prefix = f"{today.year}-{str(today.month).zfill(2)}"
+
+    def _get_user_stats(user_id: int):
+        txs = db.query(models.Transaction).filter(
+            models.Transaction.user_id == user_id,
+            models.Transaction.date.startswith(month_prefix),
+        ).all()
+        income = 0.0
+        expense = 0.0
+        for t in txs:
+            cat = db.query(models.Category).filter(models.Category.id == t.category_id).first()
+            if cat and cat.type == "income":
+                income += float(t.amount)
+            else:
+                expense += float(t.amount)
+        return income, expense
+
+    # Current user stats
+    my_income, my_expense = _get_user_stats(current.id)
+    my_savings_rate = ((my_income - my_expense) / my_income * 100) if my_income > 0 else 0
+    my_expense_ratio = (my_expense / my_income * 100) if my_income > 0 else 100
+
+    # Anonymous aggregate of all other users
+    all_users = db.query(models.User).filter(models.User.id != current.id).all()
+    all_savings_rates = []
+    all_expense_ratios = []
+    for u in all_users:
+        inc, exp = _get_user_stats(u.id)
+        if inc > 0:
+            all_savings_rates.append((inc - exp) / inc * 100)
+            all_expense_ratios.append(exp / inc * 100)
+
+    # Fallback if no other users
+    if not all_savings_rates:
+        all_savings_rates = [15.0, 22.0, 8.0, 30.0, 5.0]
+        all_expense_ratios = [85.0, 78.0, 92.0, 70.0, 95.0]
+
+    avg_savings = sum(all_savings_rates) / len(all_savings_rates)
+    avg_expense = sum(all_expense_ratios) / len(all_expense_ratios)
+
+    # Percentile: how many users have a lower savings rate than you
+    lower = sum(1 for r in all_savings_rates if r < my_savings_rate)
+    percentile = int(lower / len(all_savings_rates) * 100)
+
+    # Score 0-100
+    score = min(100, max(0, int(my_savings_rate * 2)))
+
+    # Badge
+    if score >= 80:
+        badge = "🏆 Expert Épargne"
+    elif score >= 60:
+        badge = "🥈 Épargnant Solide"
+    elif score >= 40:
+        badge = "🥉 En Progression"
+    elif score >= 20:
+        badge = "📈 Débutant"
+    else:
+        badge = "💡 À Améliorer"
+
+    tips = []
+    if my_savings_rate < avg_savings:
+        diff = avg_savings - my_savings_rate
+        tips.append(f"Votre taux d'épargne ({my_savings_rate:.1f}%) est {diff:.1f}% sous la moyenne. Essayez d'automatiser vos virements épargne.")
+    else:
+        tips.append(f"Bravo ! Votre taux d'épargne ({my_savings_rate:.1f}%) dépasse la moyenne de {my_savings_rate - avg_savings:.1f}%.")
+    if my_expense_ratio > avg_expense:
+        tips.append("Vos dépenses représentent une part plus importante de vos revenus que la moyenne — passez en revue vos abonnements et dépenses variables.")
+    if percentile >= 75:
+        tips.append("Vous faites partie du top 25% des épargnants de la communauté NexLedger !")
+    tips.append("Conseil : automatisez un virement de 10% de chaque paie vers un CELI dès réception.")
+
+    return schemas.CommunityBenchmark(
+        your_savings_rate=round(my_savings_rate, 1),
+        avg_savings_rate=round(avg_savings, 1),
+        your_expense_ratio=round(my_expense_ratio, 1),
+        avg_expense_ratio=round(avg_expense, 1),
+        your_score=score,
+        percentile=percentile,
+        badge=badge,
+        tips=tips,
+    )
+
+
+# ---------- Connexion Bancaire (Plaid / Démo) ----------
+
+@app.get("/bank/status")
+def bank_status():
+    """Indique si l'intégration Plaid est configurée ou en mode démo."""
+    return {
+        "demo_mode": bank_service.DEMO_MODE,
+        "env": bank_service.PLAID_ENV,
+    }
+
+
+@app.get("/bank/link-token", response_model=schemas.BankLinkTokenOut)
+def get_link_token(current: models.User = Depends(get_current_user)):
+    """Crée un Plaid link_token pour ouvrir le widget de connexion."""
+    if bank_service.DEMO_MODE:
+        token = bank_service.create_demo_link_token(current.id)
+        return schemas.BankLinkTokenOut(
+            link_token=token,
+            demo_mode=True,
+            demo_banks=bank_service._DEMO_BANKS,
+        )
+    try:
+        token = bank_service.create_link_token(current.id)
+        return schemas.BankLinkTokenOut(link_token=token, demo_mode=False)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Plaid error: {str(e)}")
+
+
+@app.post("/bank/exchange-token", response_model=schemas.BankConnectionOut)
+def exchange_token(
+    payload: schemas.BankExchangeRequest,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Échange le public_token contre un access_token et sauvegarde la connexion."""
+    if bank_service.DEMO_MODE:
+        data = bank_service.exchange_demo_token(payload.public_token, payload.institution_id or "demo_rbc")
+    else:
+        try:
+            data = bank_service.exchange_public_token(payload.public_token)
+            data["institution_name"] = bank_service.get_institution_name(data["access_token"])
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Plaid error: {str(e)}")
+
+    # Check if already connected
+    existing = db.query(models.BankConnection).filter(
+        models.BankConnection.item_id == data["item_id"],
+        models.BankConnection.user_id == current.id,
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Cette banque est déjà connectée.")
+
+    conn = models.BankConnection(
+        user_id=current.id,
+        institution_name=data["institution_name"],
+        access_token=data["access_token"],
+        item_id=data["item_id"],
+    )
+    db.add(conn)
+    db.commit()
+    db.refresh(conn)
+
+    # Auto-sync initial transactions in background
+    _sync_bank_connection(conn.id, db, current)
+
+    return schemas.BankConnectionOut(id=conn.id, institution_name=conn.institution_name, item_id=conn.item_id, tx_count=0)
+
+
+def _sync_bank_connection(connection_id: int, db: Session, current: models.User) -> schemas.BankSyncResult:
+    """Synchronise les transactions depuis Plaid/démo pour une connexion."""
+    conn = db.query(models.BankConnection).filter(
+        models.BankConnection.id == connection_id,
+        models.BankConnection.user_id == current.id,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connexion bancaire introuvable.")
+
+    if bank_service.DEMO_MODE:
+        raw_txs, new_cursor = bank_service.get_demo_transactions(conn.cursor)
+    else:
+        try:
+            raw_txs, new_cursor = bank_service.sync_transactions(conn.access_token, conn.cursor)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Plaid sync error: {str(e)}")
+
+    # Find or create a default "Banque" category for uncategorized imports
+    def _get_or_create_category(db: Session, user_id: int, name: str, cat_type: str) -> models.Category:
+        cat = db.query(models.Category).filter(
+            models.Category.user_id == user_id,
+            models.Category.name == name,
+        ).first()
+        if not cat:
+            cat = models.Category(user_id=user_id, name=name, type=cat_type)
+            db.add(cat)
+            db.flush()
+        return cat
+
+    added = 0
+    skipped = 0
+    for tx in raw_txs:
+        # Deduplication by external_id
+        if db.query(models.Transaction).filter(
+            models.Transaction.external_id == tx["transaction_id"]
+        ).first():
+            skipped += 1
+            continue
+
+        cat_name = tx.get("category_hint") or "Importé"
+        cat_type = tx.get("tx_type", "expense")
+        cat = _get_or_create_category(db, current.id, cat_name, cat_type)
+
+        amount = abs(float(tx["amount"]))
+        new_tx = models.Transaction(
+            user_id=current.id,
+            category_id=cat.id,
+            amount=amount,
+            date=tx["date"],
+            note=tx["name"],
+            external_id=tx["transaction_id"],
+            bank_connection_id=conn.id,
+        )
+        db.add(new_tx)
+        added += 1
+
+    conn.cursor = new_cursor
+    db.commit()
+
+    return schemas.BankSyncResult(added=added, skipped=skipped, institution_name=conn.institution_name)
+
+
+@app.post("/bank/sync/{connection_id}", response_model=schemas.BankSyncResult)
+def sync_bank(
+    connection_id: int,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Synchronise les nouvelles transactions d'une connexion bancaire."""
+    return _sync_bank_connection(connection_id, db, current)
+
+
+@app.post("/bank/sync-all")
+def sync_all_banks(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Synchronise toutes les connexions bancaires de l'utilisateur."""
+    connections = db.query(models.BankConnection).filter(
+        models.BankConnection.user_id == current.id
+    ).all()
+    results = []
+    for conn in connections:
+        try:
+            r = _sync_bank_connection(conn.id, db, current)
+            results.append({"id": conn.id, "institution": conn.institution_name, "added": r.added})
+        except Exception as e:
+            results.append({"id": conn.id, "institution": conn.institution_name, "error": str(e)})
+    return {"synced": len(results), "results": results}
+
+
+@app.get("/bank/connections", response_model=List[schemas.BankConnectionOut])
+def list_bank_connections(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Liste toutes les connexions bancaires avec le nombre de transactions."""
+    connections = db.query(models.BankConnection).filter(
+        models.BankConnection.user_id == current.id
+    ).all()
+    result = []
+    for conn in connections:
+        tx_count = db.query(models.Transaction).filter(
+            models.Transaction.bank_connection_id == conn.id
+        ).count()
+        result.append(schemas.BankConnectionOut(
+            id=conn.id,
+            institution_name=conn.institution_name,
+            item_id=conn.item_id,
+            tx_count=tx_count,
+        ))
+    return result
+
+
+@app.delete("/bank/connections/{connection_id}")
+def delete_bank_connection(
+    connection_id: int,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Déconnecte une banque et supprime les transactions importées."""
+    conn = db.query(models.BankConnection).filter(
+        models.BankConnection.id == connection_id,
+        models.BankConnection.user_id == current.id,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connexion introuvable.")
+
+    # Delete imported transactions
+    db.query(models.Transaction).filter(
+        models.Transaction.bank_connection_id == connection_id
+    ).delete()
+    db.delete(conn)
+    db.commit()
+    return {"message": f"{conn.institution_name} déconnectée avec succès."}
