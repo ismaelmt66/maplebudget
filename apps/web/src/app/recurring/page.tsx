@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   getRecurringTransactions,
   createRecurringTransaction,
@@ -41,7 +41,7 @@ export default function RecurringPage() {
   });
   const [formLoading, setFormLoading] = useState(false);
 
-  async function loadItems() {
+  const loadItems = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getRecurringTransactions();
@@ -51,11 +51,11 @@ export default function RecurringPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [addToast]);
 
   useEffect(() => {
     loadItems();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadItems]);
 
   async function handleDetect() {
     try {

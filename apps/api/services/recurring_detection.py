@@ -109,11 +109,21 @@ class RecurringDetectionEngine:
     # ------------------------------------------------------------------
 
     def _group_key(self, tx: models.Transaction) -> str:
-        """Clé de regroupement basée sur la note et le montant arrondi."""
+        """Clé de regroupement basée sur la note et le montant (±10% de tolérance).
+
+        Le montant est arrondi au palier le plus proche basé sur 10% de sa valeur,
+        ce qui permet de regrouper des transactions similaires même si le montant
+        varie légèrement (ex: 14.99, 15.00, 15.49 → même groupe).
+        """
         note = (tx.note or "").strip().lower()
-        # Arrondir le montant à la dizaine la plus proche pour regrouper les montants proches
-        rounded = round(float(tx.amount) / 10) * 10
-        return f"{note}|{rounded}"
+        amount = float(tx.amount)
+        # Use percentage-based bucketing: round to nearest 10% step
+        if amount <= 0:
+            bucket = 0.0
+        else:
+            step = max(1.0, amount * 0.10)  # 10% tolerance step, minimum 1.0
+            bucket = round(round(amount / step) * step, 2)
+        return f"{note}|{bucket}"
 
     def _group_name(self, txs: list[models.Transaction]) -> str:
         """Choisit le meilleur nom pour le groupe."""

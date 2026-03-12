@@ -308,7 +308,7 @@ def detect_recurring_transactions(
             .first()
         )
         if existing:
-            # Update existing record
+            # Update detection metadata but preserve user-set status
             existing.amount = p["amount"]
             existing.frequency = p["frequency"]
             existing.confidence_score = p["confidence_score"]
@@ -316,6 +316,7 @@ def detect_recurring_transactions(
             existing.next_occurrence = p["next_occurrence"]
             existing.category_name = p["category_name"]
             existing.updated_at = now
+            # Do NOT overwrite status — user may have paused this intentionally
             db.commit()
             db.refresh(existing)
             created.append(existing)
