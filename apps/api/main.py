@@ -636,12 +636,19 @@ def dashboard(
 
 # ---------- Budget Alerts (protected) ----------
 
+# Thresholds for budget status classification (percentage of budget used)
+_BUDGET_THRESHOLD_EXCEEDED = 100.0  # spent >= budget
+_BUDGET_THRESHOLD_DANGER = 90.0    # 90-100% spent
+_BUDGET_THRESHOLD_WARNING = 70.0   # 70-90% spent
+
+
 def _budget_alert_status(percentage: float) -> str:
-    if percentage >= 100:
+    """Classify budget usage into a status string based on percentage thresholds."""
+    if percentage >= _BUDGET_THRESHOLD_EXCEEDED:
         return "exceeded"
-    if percentage >= 90:
+    if percentage >= _BUDGET_THRESHOLD_DANGER:
         return "danger"
-    if percentage >= 70:
+    if percentage >= _BUDGET_THRESHOLD_WARNING:
         return "warning"
     return "safe"
 

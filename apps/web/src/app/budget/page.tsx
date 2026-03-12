@@ -41,6 +41,23 @@ function getMonthLabel(monthStr: string): string {
   return d.toLocaleDateString("fr-CA", { month: "long", year: "numeric" });
 }
 
+/** Threshold below which remaining budget triggers a warning (10% of total budget) */
+const REMAINING_WARNING_THRESHOLD = 0.1;
+
+/** Returns the tone for the "spent" summary card based on how much was consumed */
+function getSpentTone(spent: number, budget: number): "good" | "warn" | "bad" {
+  if (spent > budget) return "bad";
+  const ratio = budget > 0 ? spent / budget : 0;
+  return ratio > 0.7 ? "warn" : "good";
+}
+
+/** Returns the tone for the "remaining" summary card */
+function getRemainingTone(remaining: number, totalBudget: number): "good" | "warn" | "bad" {
+  if (remaining < 0) return "bad";
+  if (remaining < totalBudget * REMAINING_WARNING_THRESHOLD) return "warn";
+  return "good";
+}
+
 export default function BudgetPage() {
   const [data, setData] = useState<BudgetAlertResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,12 +114,12 @@ export default function BudgetPage() {
           <SummaryCard
             label="Total Dépensé"
             value={money(data.total_spent)}
-            tone={data.total_spent > data.total_budget ? "bad" : data.total_spent / (data.total_budget || 1) > 0.7 ? "warn" : "good"}
+            tone={getSpentTone(data.total_spent, data.total_budget)}
           />
           <SummaryCard
             label="Restant"
             value={money(remaining)}
-            tone={remaining < 0 ? "bad" : remaining < data.total_budget * 0.1 ? "warn" : "good"}
+            tone={getRemainingTone(remaining, data.total_budget)}
           />
           <SummaryCard
             label="Catégories en alerte"
