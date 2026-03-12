@@ -322,3 +322,19 @@ class RecurringTransactionUpdate(BaseModel):
     frequency: Optional[str] = None
     next_occurrence: Optional[str] = None
     status: Optional[str] = None  # active/paused/ended
+
+
+# --- Score de Santé Financière ---
+
+class HealthScoreBreakdown(BaseModel):
+    savings_rate: float  # 0-100
+    budget_adherence: float  # 0-100
+    goals_progress: float  # 0-100
+
+
+class HealthScoreResponse(BaseModel):
+    score: int  # 0-100
+    breakdown: HealthScoreBreakdown
+    color: str  # "red" / "orange" / "yellow" / "green"
+    label: str  # "Critique" / "À améliorer" / "Bon" / "Excellent"
+    recommendations: List[str]
