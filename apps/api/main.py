@@ -8,8 +8,10 @@ catégories, transactions, objectifs et le tableau de bord.
 from dotenv import load_dotenv
 load_dotenv()
 
+import re
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -22,6 +24,7 @@ from db import get_db
 import models
 import schemas
 from auth import hash_password, verify_password, create_access_token, decode_token
+from services.export_service import ExportService, ExportFilters
 
 app = FastAPI(title="NexLeger API", version="0.2.0")
 
@@ -295,6 +298,119 @@ def delete_transaction(
     db.delete(t)
     db.commit()
     return {"deleted": True, "id": tx_id}
+
+
+# ---------- Export endpoints (protected) ----------
+
+_export_service = ExportService()
+
+
+def _safe_filename_part(value: Optional[str], fallback: str = "all") -> str:
+    """Return *value* with only alphanumeric, dash, and underscore characters.
+
+    Used to build safe ``Content-Disposition`` filenames from user-supplied
+    query parameters such as ``date_from`` / ``date_to`` and prevent header
+    injection or path traversal.
+    """
+    if not value:
+        return fallback
+    sanitized = re.sub(r"[^A-Za-z0-9_\-]", "", value)
+    return sanitized or fallback
+
+
+def _build_export_filters(
+    date_from: Optional[str],
+    date_to: Optional[str],
+    category_id: Optional[int],
+    amount_min: Optional[float],
+    amount_max: Optional[float],
+) -> ExportFilters:
+    return ExportFilters(
+        date_from=date_from,
+        date_to=date_to,
+        category_id=category_id,
+        amount_min=amount_min,
+        amount_max=amount_max,
+    )
+
+
+def _tx_to_dict(t: models.Transaction) -> dict:
+    return {
+        "id": t.id,
+        "date": t.date,
+        "amount": float(t.amount),
+        "note": t.note,
+        "category_id": t.category_id,
+        "category_name": t.category.name if t.category else "",
+        "category_type": t.category.type if t.category else "",
+    }
+
+
+@app.post("/transactions/export/csv")
+def export_transactions_csv(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    category_id: Optional[int] = None,
+    amount_min: Optional[float] = None,
+    amount_max: Optional[float] = None,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Export the current user's transactions as a CSV file download.
+
+    All filter parameters are optional query parameters.  The response is a
+    ``text/csv`` attachment with a UTF-8 BOM for Excel compatibility.
+    """
+    txs = (
+        db.query(models.Transaction)
+        .filter(models.Transaction.user_id == current.id)
+        .order_by(models.Transaction.date.desc(), models.Transaction.id.desc())
+        .all()
+    )
+    filters = _build_export_filters(date_from, date_to, category_id, amount_min, amount_max)
+    tx_dicts = [_tx_to_dict(t) for t in txs]
+    csv_bytes = _export_service.generate_csv(tx_dicts, filters)
+    filename = f"transactions_{_safe_filename_part(date_from)}_{_safe_filename_part(date_to)}.csv"
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.post("/transactions/export/pdf")
+def export_transactions_pdf(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    category_id: Optional[int] = None,
+    amount_min: Optional[float] = None,
+    amount_max: Optional[float] = None,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Export the current user's transactions as a PDF file download.
+
+    Same filter parameters as the CSV endpoint.  Requires the *fpdf2*
+    package; returns HTTP 501 if it is not installed.
+    """
+    txs = (
+        db.query(models.Transaction)
+        .filter(models.Transaction.user_id == current.id)
+        .order_by(models.Transaction.date.desc(), models.Transaction.id.desc())
+        .all()
+    )
+    filters = _build_export_filters(date_from, date_to, category_id, amount_min, amount_max)
+    tx_dicts = [_tx_to_dict(t) for t in txs]
+    try:
+        pdf_bytes = _export_service.generate_pdf(tx_dicts, filters, title="Transactions Export")
+    except RuntimeError as exc:
+        raise HTTPException(status_code=501, detail=str(exc)) from exc
+    filename = f"transactions_{_safe_filename_part(date_from)}_{_safe_filename_part(date_to)}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ---------- Dashboard (protected) ----------
