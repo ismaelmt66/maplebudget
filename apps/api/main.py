@@ -1363,3 +1363,72 @@ def ai_chat(
     reply = engine.process_query(payload.message)
 
     return {"reply": reply.strip()}
+
+
+# ---------- Onboarding ----------
+
+@app.get("/users/onboarding-status")
+def get_onboarding_status(current: models.User = Depends(get_current_user)):
+    """Retourne le statut d'onboarding de l'utilisateur courant."""
+    return {"is_onboarded": current.is_onboarded}
+
+
+@app.patch("/users/onboarding-complete")
+def complete_onboarding(
+    current: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Marque l'onboarding comme terminé pour l'utilisateur courant."""
+    current.is_onboarded = True
+    db.add(current)
+    db.commit()
+    db.refresh(current)
+    return {"message": "Onboarding completed", "is_onboarded": True}
+
+
+_DEFAULT_CATEGORY_NAMES = [
+    "🏠 Logement",
+    "🍔 Alimentation",
+    "🚗 Transport",
+    "💊 Santé",
+    "🎬 Loisirs",
+    "👕 Vêtements",
+    "📱 Abonnements",
+    "🎓 Éducation",
+    "💼 Épargne",
+    "🎁 Cadeaux",
+    "📦 Divers",
+]
+
+DEFAULT_CATEGORIES = [
+    {"name": name, "icon": name.split()[0]} for name in _DEFAULT_CATEGORY_NAMES
+]
+
+
+@app.get("/onboarding/default-categories")
+def get_default_categories():
+    """Retourne la liste des catégories suggérées pour les nouveaux utilisateurs."""
+    return DEFAULT_CATEGORIES
+
+
+@app.post("/onboarding/setup-categories")
+def setup_categories(
+    payload: schemas.OnboardingSetupRequest,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Crée plusieurs catégories en une seule requête pour l'onboarding."""
+    created_cats = []
+    for item in payload.categories:
+        cat = models.Category(
+            name=item.name,
+            type="expense",
+            budget_limit=item.budget_limit,
+            user_id=current.id,
+        )
+        db.add(cat)
+        created_cats.append(cat)
+    db.commit()
+    for cat in created_cats:
+        db.refresh(cat)
+    return {"created": len(created_cats), "categories": created_cats}
