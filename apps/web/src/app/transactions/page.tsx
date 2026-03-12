@@ -14,6 +14,8 @@ import {
   getTransactions,
   updateTransaction,
   downloadTransactionsCSV,
+  suggestCategory,
+  processRecurringTransactions,
 } from "@/lib/api";
 
 // les helpers de formatage commun sont centralisés
@@ -36,6 +38,10 @@ export default function TransactionsPage(): React.JSX.Element {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState("");
   const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceInterval, setRecurrenceInterval] = useState<string>("monthly");
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isProcessingRecurring, setIsProcessingRecurring] = useState(false);
 
   // Filtres de liste
   const [typeFilter, setTypeFilter] = useState<"all" | "income" | "expense">("all");
@@ -146,11 +152,56 @@ export default function TransactionsPage(): React.JSX.Element {
         date,
         note: note || undefined,
         category_id: categoryId,
+        is_recurring: isRecurring,
+        recurrence_interval: isRecurring ? recurrenceInterval : null,
       });
       setNote("");
+      setIsRecurring(false);
       await load();
     } catch (e: unknown) {
       setErr((e as Error)?.message ?? "Erreur");
+    }
+  }
+
+  /**
+   * Auto-catégorise la transaction basée sur la note.
+   */
+  async function handleSuggestCategory() {
+    if (!note.trim()) {
+      addToast("Entrez une note/description pour auto-catégoriser.", "info");
+      return;
+    }
+    setIsSuggesting(true);
+    try {
+      const suggestion = await suggestCategory(note);
+      if (suggestion.category_id) {
+        setCategoryId(suggestion.category_id);
+        addToast(`Catégorie suggérée: ${suggestion.category_name} (${Math.round(suggestion.confidence * 100)}% confiance)`, "success");
+      }
+    } catch (e: unknown) {
+      addToast((e as Error)?.message ?? "Erreur lors de la suggestion", "error");
+    } finally {
+      setIsSuggesting(false);
+    }
+  }
+
+  /**
+   * Traite les transactions récurrentes dues.
+   */
+  async function handleProcessRecurring() {
+    setIsProcessingRecurring(true);
+    try {
+      const result = await processRecurringTransactions();
+      if (result.count > 0) {
+        addToast(`${result.count} transaction(s) récurrente(s) générée(s) !`, "success");
+        await load();
+      } else {
+        addToast("Aucune transaction récurrente due.", "info");
+      }
+    } catch (e: unknown) {
+      addToast((e as Error)?.message ?? "Erreur", "error");
+    } finally {
+      setIsProcessingRecurring(false);
     }
   }
 
@@ -273,9 +324,55 @@ export default function TransactionsPage(): React.JSX.Element {
               </label>
               <label className="text-sm font-medium text-white/80">
                 Note (optionnel)
-                <input className="w-full bg-black/40 border border-white/10 focus:border-indigo-500/50 focus:ring-indigo-500/20 py-3 px-4 rounded-xl mt-2" value={note} onChange={(e) => setNote(e.target.value)} />
+                <div className="flex gap-2 mt-2">
+                  <input className="flex-1 bg-black/40 border border-white/10 focus:border-indigo-500/50 focus:ring-indigo-500/20 py-3 px-4 rounded-xl" value={note} onChange={(e) => setNote(e.target.value)} placeholder="ex: Netflix, loyer..." />
+                  <button
+                    type="button"
+                    onClick={handleSuggestCategory}
+                    disabled={isSuggesting}
+                    className="px-3 py-3 rounded-xl bg-purple-600/20 border border-purple-500/30 hover:bg-purple-600/30 text-purple-300 text-xs font-semibold transition-all disabled:opacity-50 shrink-0"
+                    title="Auto-catégoriser via IA"
+                  >
+                    {isSuggesting ? "..." : "✨ IA"}
+                  </button>
+                </div>
               </label>
+
+              {/* Récurrence */}
+              <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isRecurring}
+                    onChange={(e) => setIsRecurring(e.target.checked)}
+                    className="w-4 h-4 rounded border-white/20 bg-black/40 text-indigo-500"
+                  />
+                  <span className="text-sm font-medium text-white/80">Transaction récurrente</span>
+                </label>
+                {isRecurring && (
+                  <select
+                    className="w-full mt-3 bg-black/40 border border-white/10 focus:border-indigo-500/50 py-2.5 px-3 rounded-xl text-sm"
+                    value={recurrenceInterval}
+                    onChange={(e) => setRecurrenceInterval(e.target.value)}
+                    aria-label="Intervalle de récurrence"
+                  >
+                    <option value="daily">Quotidienne</option>
+                    <option value="weekly">Hebdomadaire</option>
+                    <option value="monthly">Mensuelle</option>
+                    <option value="yearly">Annuelle</option>
+                  </select>
+                )}
+              </div>
+
               <button className="w-full mt-2 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold shadow-[0_0_20px_rgba(168,85,247,0.3)] transition-all transform hover:-translate-y-0.5" onClick={onAddTx}>Ajouter</button>
+              <button
+                type="button"
+                onClick={handleProcessRecurring}
+                disabled={isProcessingRecurring}
+                className="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/70 text-sm font-medium transition-all disabled:opacity-50"
+              >
+                {isProcessingRecurring ? "Traitement..." : "Générer transactions récurrentes dues"}
+              </button>
             </div>
           </div>
         </div>

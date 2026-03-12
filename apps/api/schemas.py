@@ -60,6 +60,8 @@ class TransactionCreate(BaseModel):
     category_id: int
     external_id: Optional[str] = None
     bank_connection_id: Optional[int] = None
+    is_recurring: bool = False
+    recurrence_interval: Optional[str] = None  # 'daily'|'weekly'|'monthly'|'yearly'
 
 
 class TransactionUpdate(BaseModel):
@@ -78,6 +80,8 @@ class TransactionOut(BaseModel):
     category: CategoryOut
     external_id: Optional[str] = None
     bank_connection_id: Optional[int] = None
+    is_recurring: bool = False
+    recurrence_interval: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -265,3 +269,124 @@ class AllocationApplyRequest(BaseModel):
 class AIStatusOut(BaseModel):
     mode: str
     llm_provider: Optional[str] = None
+
+
+# --- Recurring Transactions ---
+
+class RecurringTransactionCreate(BaseModel):
+    name: str
+    amount: float
+    category_id: int
+    frequency: str  # 'weekly' | 'monthly' | 'yearly'
+    next_date: str  # YYYY-MM-DD
+    note: Optional[str] = None
+
+
+class RecurringTransactionUpdate(BaseModel):
+    name: Optional[str] = None
+    amount: Optional[float] = None
+    category_id: Optional[int] = None
+    frequency: Optional[str] = None
+    next_date: Optional[str] = None
+    note: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class RecurringTransactionOut(BaseModel):
+    id: int
+    name: str
+    amount: float
+    category: CategoryOut
+    frequency: str
+    next_date: str
+    note: Optional[str] = None
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+
+# --- Health Score ---
+
+class HealthScoreBreakdown(BaseModel):
+    savings_rate: float
+    budget_compliance: float
+    emergency_fund: float
+    goal_progress: float
+    diversification: float
+
+class HealthScoreOut(BaseModel):
+    score: int
+    grade: str
+    breakdown: HealthScoreBreakdown
+    insights: List[str]
+    last_calculated: str
+
+
+# --- AI Category Suggestion ---
+
+class SuggestCategoryRequest(BaseModel):
+    description: str
+
+class SuggestCategoryResponse(BaseModel):
+    category_id: Optional[int] = None
+    category_name: str
+    confidence: float
+
+
+# --- Budget Alerts ---
+
+class BudgetAlertCreate(BaseModel):
+    category_id: int
+    monthly_limit: float
+
+
+class BudgetAlertOut(BaseModel):
+    id: int
+    category_id: int
+    category_name: str
+    monthly_limit: float
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
+
+class BudgetAlertCheckOut(BaseModel):
+    category_id: int
+    category_name: str
+    monthly_limit: float
+    current_spending: float
+    percentage: float
+    is_exceeded: bool
+
+
+# --- Global Search ---
+
+class SearchResults(BaseModel):
+    transactions: List[dict]
+    categories: List[dict]
+    goals: List[dict]
+
+
+# --- Net Worth History ---
+
+class NetWorthHistoryPoint(BaseModel):
+    date: str
+    net_worth: float
+
+
+# --- Reports ---
+
+class ReportSummary(BaseModel):
+    generated_at: str
+    period: str
+    income_total: float
+    expense_total: float
+    net: float
+    savings_rate: float
+    top_expense_categories: List[dict]
+    health_score: int
+    goals_count: int
+    goals_on_track: int
+    recurring_monthly_cost: float

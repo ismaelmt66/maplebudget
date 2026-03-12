@@ -197,6 +197,8 @@ def create_transaction(
         note=payload.note,
         category_id=payload.category_id,
         user_id=current.id,
+        is_recurring=payload.is_recurring,
+        recurrence_interval=payload.recurrence_interval,
     )
     db.add(t)
     db.commit()
@@ -987,3 +989,559 @@ def ai_chat(
     reply = engine.process_query(payload.message)
 
     return {"reply": reply.strip()}
+
+
+# ---------- Transactions: process-recurring ----------
+
+@app.post("/transactions/process-recurring")
+def process_recurring_transactions(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Génère automatiquement les transactions récurrentes dues depuis la dernière occurrence."""
+    import calendar as _calendar
+
+    def add_interval(d: "dt_date", interval: str) -> "dt_date":
+        if interval == "daily":
+            from datetime import timedelta
+            return d + timedelta(days=1)
+        if interval == "weekly":
+            from datetime import timedelta
+            return d + timedelta(weeks=1)
+        if interval == "monthly":
+            # Avancer d'un mois
+            month = d.month + 1
+            year = d.year
+            if month > 12:
+                month = 1
+                year += 1
+            day = min(d.day, _calendar.monthrange(year, month)[1])
+            return d.replace(year=year, month=month, day=day)
+        if interval == "yearly":
+            try:
+                return d.replace(year=d.year + 1)
+            except ValueError:
+                return d.replace(year=d.year + 1, day=28)
+        return d
+
+    today = dt_date.today()
+
+    # Trouver toutes les transactions récurrentes de l'utilisateur
+    recurring_txs = (
+        db.query(models.Transaction)
+        .filter(
+            models.Transaction.user_id == current.id,
+            models.Transaction.is_recurring == True,  # noqa: E712
+            models.Transaction.recurrence_interval != None,  # noqa: E711
+        )
+        .order_by(models.Transaction.date.desc())
+        .all()
+    )
+
+    # Regrouper par (category_id, recurrence_interval, amount arrondi) → dernière occurrence
+    seen = {}
+    for t in recurring_txs:
+        key = (t.category_id, t.recurrence_interval, round(float(t.amount), 2))
+        if key not in seen:
+            seen[key] = t
+
+    generated = []
+    for key, last_tx in seen.items():
+        interval = last_tx.recurrence_interval
+        try:
+            last_date = datetime.strptime(last_tx.date, "%Y-%m-%d").date()
+        except ValueError:
+            continue
+
+        next_date = last_date
+        iterations = 0
+        while iterations < 366:  # sécurité anti-boucle infinie
+            iterations += 1
+            next_date = add_interval(next_date, interval)
+            if next_date > today:
+                break
+
+            new_t = models.Transaction(
+                amount=last_tx.amount,
+                date=next_date.strftime("%Y-%m-%d"),
+                note=last_tx.note,
+                category_id=last_tx.category_id,
+                user_id=current.id,
+                is_recurring=True,
+                recurrence_interval=interval,
+            )
+            db.add(new_t)
+            db.flush()
+            generated.append({
+                "date": next_date.strftime("%Y-%m-%d"),
+                "amount": float(last_tx.amount),
+                "category_id": last_tx.category_id,
+                "interval": interval,
+            })
+
+    db.commit()
+    return {"generated": generated, "count": len(generated)}
+
+
+# ---------- Transactions: suggest-category (Auto-Catégorisation) ----------
+
+@app.post("/transactions/suggest-category", response_model=schemas.SuggestCategoryResponse)
+def suggest_category(
+    payload: schemas.SuggestCategoryRequest,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Suggère une catégorie basée sur la description de la transaction via l'IA."""
+    cats = (
+        db.query(models.Category)
+        .filter(models.Category.user_id == current.id)
+        .all()
+    )
+    if not cats:
+        return schemas.SuggestCategoryResponse(category_name="Aucune catégorie", confidence=0.0)
+
+    description = payload.description.lower().strip()
+
+    # Essayer d'abord via LLM si disponible
+    groq_key = os.environ.get("GROQ_API_KEY")
+    if groq_key:
+        try:
+            from groq import Groq as _GroqClient
+            client = _GroqClient(api_key=groq_key)
+            cat_list = "\n".join([f"- id={c.id}: {c.name} ({c.type})" for c in cats])
+            prompt = f"""Tu es un assistant de catégorisation financière.
+Voici les catégories disponibles:
+{cat_list}
+
+Description de la transaction: "{payload.description}"
+
+Réponds UNIQUEMENT avec l'ID de la catégorie la plus appropriée (juste le nombre entier, rien d'autre)."""
+            resp = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=10,
+                temperature=0,
+            )
+            raw = resp.choices[0].message.content.strip()
+            cat_id = int("".join(c for c in raw if c.isdigit()))
+            matched = next((c for c in cats if c.id == cat_id), None)
+            if matched:
+                return schemas.SuggestCategoryResponse(
+                    category_id=matched.id,
+                    category_name=matched.name,
+                    confidence=0.9,
+                )
+        except Exception:
+            pass  # Fallback sur heuristique
+
+    # Heuristique par correspondance de mots-clés
+    keyword_map = {
+        "alimentation": ["nourriture", "épicerie", "restaurant", "café", "food", "pizza", "burger", "iga", "metro", "maxi"],
+        "transport": ["uber", "taxi", "bus", "stm", "train", "essence", "parking", "auto", "voiture"],
+        "logement": ["loyer", "rent", "hydro", "électricité", "internet", "assurance", "maison"],
+        "divertissement": ["netflix", "spotify", "amazon", "jeux", "cinéma", "concert", "sortie"],
+        "santé": ["pharmacie", "médecin", "docteur", "dentiste", "gym", "sport"],
+        "shopping": ["vêtements", "amazon", "achat", "shopping", "magasin"],
+        "revenu": ["salaire", "paie", "revenu", "income", "virement"],
+    }
+
+    best_cat = None
+    best_score = 0.0
+
+    for cat in cats:
+        score = 0.0
+        cat_name_lower = cat.name.lower()
+
+        # Correspondance directe avec le nom de catégorie
+        if cat_name_lower in description or description in cat_name_lower:
+            score = 0.85
+        else:
+            # Correspondance avec les mots-clés
+            for kw_cat, keywords in keyword_map.items():
+                if kw_cat in cat_name_lower:
+                    for kw in keywords:
+                        if kw in description:
+                            score = max(score, 0.7)
+
+            # Correspondance partielle
+            if any(word in description for word in cat_name_lower.split()):
+                score = max(score, 0.6)
+
+        if score > best_score:
+            best_score = score
+            best_cat = cat
+
+    if best_cat and best_score > 0:
+        return schemas.SuggestCategoryResponse(
+            category_id=best_cat.id,
+            category_name=best_cat.name,
+            confidence=best_score,
+        )
+
+    # Retourner la première catégorie par défaut
+    return schemas.SuggestCategoryResponse(
+        category_id=cats[0].id,
+        category_name=cats[0].name,
+        confidence=0.1,
+    )
+
+
+# ---------- Budget Alerts ----------
+
+@app.get("/budget-alerts", response_model=List[schemas.BudgetAlertOut])
+def list_budget_alerts(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Liste toutes les alertes budget de l'utilisateur."""
+    alerts = (
+        db.query(models.BudgetAlert)
+        .filter(models.BudgetAlert.user_id == current.id)
+        .all()
+    )
+    return [
+        schemas.BudgetAlertOut(
+            id=a.id,
+            category_id=a.category_id,
+            category_name=a.category.name if a.category else "?",
+            monthly_limit=float(a.monthly_limit),
+            created_at=a.created_at,
+        )
+        for a in alerts
+    ]
+
+
+@app.post("/budget-alerts", response_model=schemas.BudgetAlertOut, status_code=201)
+def create_budget_alert(
+    payload: schemas.BudgetAlertCreate,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Crée une nouvelle alerte budget pour une catégorie."""
+    cat = (
+        db.query(models.Category)
+        .filter(models.Category.id == payload.category_id, models.Category.user_id == current.id)
+        .first()
+    )
+    if not cat:
+        raise HTTPException(status_code=404, detail="Catégorie non trouvée")
+
+    # Vérifier si une alerte existe déjà pour cette catégorie
+    existing = (
+        db.query(models.BudgetAlert)
+        .filter(models.BudgetAlert.user_id == current.id, models.BudgetAlert.category_id == payload.category_id)
+        .first()
+    )
+    if existing:
+        existing.monthly_limit = payload.monthly_limit
+        db.commit()
+        db.refresh(existing)
+        return schemas.BudgetAlertOut(
+            id=existing.id,
+            category_id=existing.category_id,
+            category_name=cat.name,
+            monthly_limit=float(existing.monthly_limit),
+            created_at=existing.created_at,
+        )
+
+    today_str = dt_date.today().strftime("%Y-%m-%d")
+    alert = models.BudgetAlert(
+        user_id=current.id,
+        category_id=payload.category_id,
+        monthly_limit=payload.monthly_limit,
+        created_at=today_str,
+    )
+    db.add(alert)
+    db.commit()
+    db.refresh(alert)
+    return schemas.BudgetAlertOut(
+        id=alert.id,
+        category_id=alert.category_id,
+        category_name=cat.name,
+        monthly_limit=float(alert.monthly_limit),
+        created_at=alert.created_at,
+    )
+
+
+@app.delete("/budget-alerts/{alert_id}", status_code=204)
+def delete_budget_alert(
+    alert_id: int,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Supprime une alerte budget."""
+    alert = (
+        db.query(models.BudgetAlert)
+        .filter(models.BudgetAlert.id == alert_id, models.BudgetAlert.user_id == current.id)
+        .first()
+    )
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alerte non trouvée")
+    db.delete(alert)
+    db.commit()
+
+
+@app.get("/budget-alerts/check", response_model=List[schemas.BudgetAlertCheckOut])
+def check_budget_alerts(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Retourne les catégories dépassant leur limite ce mois-ci."""
+    today = dt_date.today()
+    month_start = today.replace(day=1).strftime("%Y-%m-%d")
+    month_end = today.strftime("%Y-%m-%d")
+
+    alerts = (
+        db.query(models.BudgetAlert)
+        .filter(models.BudgetAlert.user_id == current.id)
+        .all()
+    )
+
+    results = []
+    for alert in alerts:
+        # Calculer les dépenses du mois courant pour cette catégorie
+        total = (
+            db.query(func.coalesce(func.sum(models.Transaction.amount), 0))
+            .filter(
+                models.Transaction.user_id == current.id,
+                models.Transaction.category_id == alert.category_id,
+                models.Transaction.date >= month_start,
+                models.Transaction.date <= month_end,
+            )
+            .scalar()
+        ) or 0
+
+        current_spending = float(total)
+        monthly_limit = float(alert.monthly_limit)
+        percentage = (current_spending / monthly_limit * 100) if monthly_limit > 0 else 0
+
+        results.append(schemas.BudgetAlertCheckOut(
+            category_id=alert.category_id,
+            category_name=alert.category.name if alert.category else "?",
+            monthly_limit=monthly_limit,
+            current_spending=current_spending,
+            percentage=round(percentage, 1),
+            is_exceeded=current_spending >= monthly_limit,
+        ))
+
+    return results
+
+
+# ---------- Financial Health Score ----------
+
+@app.get("/financial-health-score", response_model=schemas.HealthScoreOut)
+def financial_health_score(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Calcule rapidement le score de santé financière (0-100) sans générer tout le rapport IA."""
+    today = dt_date.today()
+    month_start = today.replace(day=1).strftime("%Y-%m-%d")
+    month_end = today.strftime("%Y-%m-%d")
+
+    # Toutes les transactions des 3 derniers mois
+    three_months_ago = today.replace(day=1)
+    for _ in range(2):
+        if three_months_ago.month == 1:
+            three_months_ago = three_months_ago.replace(year=three_months_ago.year - 1, month=12)
+        else:
+            three_months_ago = three_months_ago.replace(month=three_months_ago.month - 1)
+    three_months_str = three_months_ago.strftime("%Y-%m-%d")
+
+    txs = (
+        db.query(models.Transaction, models.Category)
+        .join(models.Category, models.Transaction.category_id == models.Category.id)
+        .filter(models.Transaction.user_id == current.id, models.Transaction.date >= three_months_str)
+        .all()
+    )
+
+    income = sum(float(t.amount) for t, c in txs if c.type == "income")
+    expenses = sum(float(t.amount) for t, c in txs if c.type == "expense")
+    net = income - expenses
+
+    # 1. Taux d'épargne (0-25 pts)
+    savings_rate = (net / income * 100) if income > 0 else 0
+    savings_score = min(25, max(0, savings_rate / 2))  # 50% savings rate = max
+
+    # 2. Conformité budget (0-25 pts)
+    cats_with_limit = (
+        db.query(models.Category)
+        .filter(models.Category.user_id == current.id, models.Category.budget_limit != None)  # noqa: E711
+        .all()
+    )
+    if cats_with_limit:
+        compliant = 0
+        for cat in cats_with_limit:
+            month_spending = sum(
+                float(t.amount) for t, c in txs
+                if c.id == cat.id and t.date >= month_start
+            )
+            if month_spending <= float(cat.budget_limit):
+                compliant += 1
+        budget_score = (compliant / len(cats_with_limit)) * 25
+    else:
+        budget_score = 12.5  # Pas de limite = score neutre
+
+    # 3. Fonds d'urgence via actifs (0-25 pts)
+    assets = db.query(models.Asset).filter(models.Asset.user_id == current.id).all()
+    liquid_assets = sum(
+        float(a.balance) for a in assets
+        if a.type in ("checking", "savings") and float(a.balance) > 0
+    )
+    monthly_expenses = expenses / 3 if expenses > 0 else 1
+    emergency_months = liquid_assets / monthly_expenses if monthly_expenses > 0 else 0
+    emergency_score = min(25, (emergency_months / 6) * 25)  # 6 mois = max
+
+    # 4. Progrès objectifs (0-25 pts)
+    goals = db.query(models.Goal).filter(models.Goal.user_id == current.id).all()
+    if goals:
+        total_progress = sum(
+            min(1.0, float(g.current_amount) / float(g.target_amount)) if float(g.target_amount) > 0 else 0
+            for g in goals
+        )
+        goal_score = (total_progress / len(goals)) * 25
+    else:
+        goal_score = 12.5
+
+    total_score = int(savings_score + budget_score + emergency_score + goal_score)
+    total_score = max(0, min(100, total_score))
+
+    grade = "A" if total_score >= 80 else "B" if total_score >= 60 else "C" if total_score >= 40 else "D"
+
+    insights = []
+    if savings_rate < 10 and income > 0:
+        insights.append(f"Taux d'épargne faible ({savings_rate:.1f}%). Visez 20% minimum.")
+    elif savings_rate >= 20:
+        insights.append(f"Excellent taux d'épargne de {savings_rate:.1f}% !")
+    if emergency_months < 3:
+        insights.append(f"Fonds d'urgence insuffisant ({emergency_months:.1f} mois). Cible: 6 mois.")
+    if len(goals) == 0:
+        insights.append("Définissez des objectifs financiers pour mieux piloter votre épargne.")
+    if not insights:
+        insights.append("Votre santé financière est bonne. Continuez ainsi !")
+
+    return schemas.HealthScoreOut(
+        score=total_score,
+        grade=grade,
+        breakdown=schemas.HealthScoreBreakdown(
+            savings_rate=round(savings_score, 1),
+            budget_compliance=round(budget_score, 1),
+            emergency_fund=round(emergency_score, 1),
+            goal_progress=round(goal_score, 1),
+            diversification=0.0,
+        ),
+        insights=insights,
+        last_calculated=today.strftime("%Y-%m-%d"),
+    )
+
+
+# ---------- Global Search ----------
+
+@app.get("/search", response_model=schemas.SearchResults)
+def global_search(
+    q: str,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Recherche globale dans les transactions, catégories et objectifs."""
+    if not q or len(q.strip()) < 2:
+        return schemas.SearchResults(transactions=[], categories=[], goals=[])
+
+    term = f"%{q.strip().lower()}%"
+
+    # Recherche dans les transactions (note / catégorie)
+    tx_results = (
+        db.query(models.Transaction, models.Category)
+        .join(models.Category, models.Transaction.category_id == models.Category.id)
+        .filter(
+            models.Transaction.user_id == current.id,
+            (func.lower(models.Transaction.note).like(term) |
+             func.lower(models.Category.name).like(term))
+        )
+        .order_by(models.Transaction.date.desc())
+        .limit(10)
+        .all()
+    )
+    transactions = [
+        {
+            "id": t.id,
+            "date": t.date,
+            "amount": float(t.amount),
+            "note": t.note,
+            "category_name": c.name,
+            "category_type": c.type,
+        }
+        for t, c in tx_results
+    ]
+
+    # Recherche dans les catégories
+    cat_results = (
+        db.query(models.Category)
+        .filter(
+            models.Category.user_id == current.id,
+            func.lower(models.Category.name).like(term),
+        )
+        .limit(5)
+        .all()
+    )
+    categories = [
+        {"id": c.id, "name": c.name, "type": c.type}
+        for c in cat_results
+    ]
+
+    # Recherche dans les objectifs
+    goal_results = (
+        db.query(models.Goal)
+        .filter(
+            models.Goal.user_id == current.id,
+            func.lower(models.Goal.title).like(term),
+        )
+        .limit(5)
+        .all()
+    )
+    goals = [
+        {
+            "id": g.id,
+            "title": g.title,
+            "target_amount": float(g.target_amount),
+            "current_amount": float(g.current_amount),
+        }
+        for g in goal_results
+    ]
+
+    return schemas.SearchResults(transactions=transactions, categories=categories, goals=goals)
+
+
+# ---------- DB Migration on startup ----------
+
+from sqlalchemy import text as sql_text
+
+@app.on_event("startup")
+def run_migrations():
+    """Applique les migrations SQLite au démarrage pour les nouvelles colonnes."""
+    from db import engine as db_engine
+    with db_engine.connect() as conn:
+        # Vérifier et ajouter is_recurring sur transactions
+        try:
+            conn.execute(sql_text("SELECT is_recurring FROM transactions LIMIT 1"))
+        except Exception:
+            conn.execute(sql_text("ALTER TABLE transactions ADD COLUMN is_recurring INTEGER NOT NULL DEFAULT 0"))
+            conn.commit()
+
+        try:
+            conn.execute(sql_text("SELECT recurrence_interval FROM transactions LIMIT 1"))
+        except Exception:
+            conn.execute(sql_text("ALTER TABLE transactions ADD COLUMN recurrence_interval TEXT"))
+            conn.commit()
+
+        # Créer la table budget_alerts si elle n'existe pas
+        conn.execute(sql_text("""
+            CREATE TABLE IF NOT EXISTS budget_alerts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                category_id INTEGER NOT NULL REFERENCES categories(id),
+                monthly_limit NUMERIC(12,2) NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        """))
+        conn.commit()

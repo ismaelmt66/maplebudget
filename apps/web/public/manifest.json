@@ -1,0 +1,19 @@
+{
+  "name": "NexLedger",
+  "short_name": "NexLedger",
+  "description": "Votre gestionnaire financier personnel intelligent.",
+  "theme_color": "#7c3aed",
+  "background_color": "#0a0a0a",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

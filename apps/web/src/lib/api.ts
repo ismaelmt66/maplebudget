@@ -68,6 +68,8 @@ export type Transaction = {
   date: string;
   note?: string | null;
   category: Category;
+  is_recurring?: boolean;
+  recurrence_interval?: string | null;
 };
 
 export type Dashboard = {
@@ -167,8 +169,21 @@ export async function createTransaction(payload: {
   date: string;
   note?: string;
   category_id: number;
+  is_recurring?: boolean;
+  recurrence_interval?: string | null;
 }): Promise<Transaction> {
   return apiFetch("/transactions", { method: "POST", body: JSON.stringify(payload) }) as Promise<Transaction>;
+}
+
+export async function processRecurringTransactions(): Promise<{ generated: object[]; count: number }> {
+  return apiFetch("/transactions/process-recurring", { method: "POST" }) as Promise<{ generated: object[]; count: number }>;
+}
+
+export async function suggestCategory(description: string): Promise<{ category_id: number | null; category_name: string; confidence: number }> {
+  return apiFetch("/transactions/suggest-category", {
+    method: "POST",
+    body: JSON.stringify({ description }),
+  }) as Promise<{ category_id: number | null; category_name: string; confidence: number }>;
 }
 
 export async function updateTransaction(
@@ -400,4 +415,71 @@ export async function applyAllocation(income_amount: number, income_category_id?
 
 export async function getPatrimoineAIAnalysis(): Promise<{ report: string }> {
   return apiFetch("/assets/ai-analysis") as Promise<{ report: string }>;
+}
+
+/* ---------- Budget Alerts ---------- */
+
+export type BudgetAlert = {
+  id: number;
+  category_id: number;
+  category_name: string;
+  monthly_limit: number;
+  created_at: string;
+};
+
+export type BudgetAlertCheck = {
+  category_id: number;
+  category_name: string;
+  monthly_limit: number;
+  current_spending: number;
+  percentage: number;
+  is_exceeded: boolean;
+};
+
+export async function getBudgetAlerts(): Promise<BudgetAlert[]> {
+  return apiFetch("/budget-alerts") as Promise<BudgetAlert[]>;
+}
+
+export async function createBudgetAlert(payload: { category_id: number; monthly_limit: number }): Promise<BudgetAlert> {
+  return apiFetch("/budget-alerts", { method: "POST", body: JSON.stringify(payload) }) as Promise<BudgetAlert>;
+}
+
+export async function deleteBudgetAlert(id: number): Promise<void> {
+  await apiFetch(`/budget-alerts/${id}`, { method: "DELETE" });
+}
+
+export async function checkBudgetAlerts(): Promise<BudgetAlertCheck[]> {
+  return apiFetch("/budget-alerts/check") as Promise<BudgetAlertCheck[]>;
+}
+
+/* ---------- Financial Health Score ---------- */
+
+export type HealthScore = {
+  score: number;
+  grade: string;
+  breakdown: {
+    savings_rate: number;
+    budget_compliance: number;
+    emergency_fund: number;
+    goal_progress: number;
+    diversification: number;
+  };
+  insights: string[];
+  last_calculated: string;
+};
+
+export async function getFinancialHealthScore(): Promise<HealthScore> {
+  return apiFetch("/financial-health-score") as Promise<HealthScore>;
+}
+
+/* ---------- Global Search ---------- */
+
+export type SearchResults = {
+  transactions: { id: number; date: string; amount: number; note?: string; category_name: string; category_type: string }[];
+  categories: { id: number; name: string; type: string }[];
+  goals: { id: number; title: string; target_amount: number; current_amount: number }[];
+};
+
+export async function globalSearch(q: string): Promise<SearchResults> {
+  return apiFetch(`/search?q=${encodeURIComponent(q)}`) as Promise<SearchResults>;
 }

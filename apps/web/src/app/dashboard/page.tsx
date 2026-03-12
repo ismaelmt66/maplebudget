@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, getCategories, getTransactions, Category, Transaction, apiFetch } from "@/lib/api";
+import { ApiError, getCategories, getTransactions, Category, Transaction, apiFetch, getFinancialHealthScore, HealthScore, checkBudgetAlerts, BudgetAlertCheck } from "@/lib/api";
 import BankConnectButton from "@/components/BankConnectButton";
 
 // type d’aide utilisé uniquement dans ce fichier pour traiter les données de
@@ -545,6 +545,8 @@ export default function DashboardPage(): React.JSX.Element {
 
   const [txs, setTxs] = useState<Tx[]>([]);
   const [forecast, setForecast] = useState<ForecastData | null>(null);
+  const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
+  const [budgetAlertChecks, setBudgetAlertChecks] = useState<BudgetAlertCheck[]>([]);
 
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -557,8 +559,15 @@ export default function DashboardPage(): React.JSX.Element {
       setErr(null);
       setLoading(true);
 
-      const [t, f] = await Promise.all([getTransactions(), apiFetch("/dashboard/ai-forecast").catch(() => null)]);
+      const [t, f, hs, bac] = await Promise.all([
+        getTransactions(),
+        apiFetch("/dashboard/ai-forecast").catch(() => null),
+        getFinancialHealthScore().catch(() => null),
+        checkBudgetAlerts().catch(() => []),
+      ]);
       setForecast(f);
+      setHealthScore(hs);
+      setBudgetAlertChecks(bac as BudgetAlertCheck[]);
 
       const normalized: Tx[] = t.map((x: Transaction) => {
         const amountNum = Number(x.amount);
@@ -727,6 +736,95 @@ export default function DashboardPage(): React.JSX.Element {
         <KPI label="Net" value={money(totals.net)} hint={`Signal: ${signal.label}`} tone={signal.tone} />
         <KPI label="Transactions" value={num(totals.count)} hint="dans la période" tone="neutral" />
       </section>
+
+      {/* Health Score + Budget Alerts from API */}
+      {(healthScore || budgetAlertChecks.some(a => a.is_exceeded)) && (
+        <section className="grid gap-4 md:grid-cols-2 animate-fade-in-up delay-150">
+          {/* Score de Santé Financière */}
+          {healthScore && (
+            <div className="rounded-3xl p-6 bg-black/40 border border-white/10 backdrop-blur-xl shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-[80px] pointer-events-none opacity-20"
+                style={{ background: healthScore.score >= 70 ? '#22c55e' : healthScore.score >= 40 ? '#f59e0b' : '#ef4444' }}
+              />
+              <div className="relative z-10">
+                <div className="text-xs font-semibold opacity-50 uppercase tracking-widest mb-4">Score de Santé</div>
+                <div className="flex items-center gap-6">
+                  {/* Cercle SVG */}
+                  <div className="relative shrink-0">
+                    <svg width="96" height="96" viewBox="0 0 96 96">
+                      <circle cx="48" cy="48" r="40" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8" />
+                      <circle
+                        cx="48" cy="48" r="40"
+                        fill="none"
+                        stroke={healthScore.score >= 70 ? '#22c55e' : healthScore.score >= 40 ? '#f59e0b' : '#ef4444'}
+                        strokeWidth="8"
+                        strokeLinecap="round"
+                        strokeDasharray={`${(healthScore.score / 100) * 251.2} 251.2`}
+                        transform="rotate(-90 48 48)"
+                        style={{ transition: 'stroke-dasharray 1s ease', filter: `drop-shadow(0 0 8px ${healthScore.score >= 70 ? 'rgba(34,197,94,0.6)' : healthScore.score >= 40 ? 'rgba(245,158,11,0.6)' : 'rgba(239,68,68,0.6)'})` }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <div className="text-2xl font-bold">{healthScore.score}</div>
+                      <div className="text-xs opacity-50">{healthScore.grade}</div>
+                    </div>
+                  </div>
+                  {/* Métriques */}
+                  <div className="flex-1 space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="opacity-60">Épargne</span>
+                      <span className="font-semibold">{healthScore.breakdown.savings_rate.toFixed(0)}/25</span>
+                    </div>
+                    <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-green-500 rounded-full" style={{ width: `${(healthScore.breakdown.savings_rate / 25) * 100}%` }} />
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="opacity-60">Budget</span>
+                      <span className="font-semibold">{healthScore.breakdown.budget_compliance.toFixed(0)}/25</span>
+                    </div>
+                    <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${(healthScore.breakdown.budget_compliance / 25) * 100}%` }} />
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="opacity-60">Urgence</span>
+                      <span className="font-semibold">{healthScore.breakdown.emergency_fund.toFixed(0)}/25</span>
+                    </div>
+                    <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-yellow-500 rounded-full" style={{ width: `${(healthScore.breakdown.emergency_fund / 25) * 100}%` }} />
+                    </div>
+                  </div>
+                </div>
+                {healthScore.insights.length > 0 && (
+                  <div className="mt-4 text-xs opacity-60 italic border-t border-white/10 pt-3">
+                    {healthScore.insights[0]}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Alertes Budget (depuis API) */}
+          {budgetAlertChecks.filter(a => a.percentage >= 80).length > 0 && (
+            <div className="rounded-3xl p-6 bg-orange-500/10 border border-orange-500/20 backdrop-blur-xl shadow-lg">
+              <div className="text-xs font-semibold text-orange-400 uppercase tracking-widest mb-4">Alertes Budget (Seuils)</div>
+              <div className="space-y-3">
+                {budgetAlertChecks.filter(a => a.percentage >= 80).slice(0, 4).map((a, i) => (
+                  <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${a.is_exceeded ? 'bg-red-500/10 border-red-500/20' : 'bg-orange-500/10 border-orange-500/20'}`}>
+                    <div>
+                      <div className="font-semibold text-sm">{a.category_name}</div>
+                      <div className="text-xs opacity-60 mt-0.5">{money(a.current_spending)} / {money(a.monthly_limit)}</div>
+                    </div>
+                    <div className={`text-sm font-bold ${a.is_exceeded ? 'text-red-400' : 'text-orange-400'}`}>
+                      {a.percentage.toFixed(0)}%
+                      {a.is_exceeded && <span className="ml-1 text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full">!</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Quick Date Filters */}
       <section className="rounded-2xl bg-black/30 border border-white/[0.06] p-4 animate-fade-in-up delay-150">

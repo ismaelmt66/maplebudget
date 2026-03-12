@@ -4,7 +4,10 @@
       "Bash(curl -s http://localhost:8000/health)",
       "Bash(xargs grep -l \"localhost:8000\\\\|API_URL\\\\|NEXT_PUBLIC\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\(''services/ai_engine.py'', encoding=''utf-8''\\).read\\(\\)\\); print\\(''Syntax OK''\\)\")",
-      "Bash(python -c \":*)"
+      "Bash(python -c \":*)",
+      "Bash(python -c \"import models; print\\(''models OK''\\)\")",
+      "Bash(python -c \"import schemas; print\\(''schemas OK''\\)\")",
+      "Bash(python -c \"import main; print\\(''main OK''\\)\")"
     ]
   }
 }

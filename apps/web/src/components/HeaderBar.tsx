@@ -8,6 +8,7 @@ import { me } from "@/lib/api";
 import { archiveChatHistory } from "@/lib/useChatHistory";
 import QuickAddTransaction from "./QuickAddTransaction";
 import { Logo } from "./Logo";
+import GlobalSearch from "./GlobalSearch";
 
 function NavLink({ href, label, icon }: { href: string; label: string; icon?: React.ReactNode }) {
   const pathname = usePathname();
@@ -244,6 +245,8 @@ export default function HeaderBar() {
             {/* Quick Add Button & Mobile Hamburger */}
             {token && (
               <div className="flex items-center gap-2">
+                <GlobalSearch />
+
                 <button
                   onClick={() => setIsQuickAddOpen(true)}
                   className="w-10 h-10 flex items-center justify-center rounded-[14px] bg-white text-black hover:bg-indigo-100 shadow-[0_0_20px_rgba(255,255,255,0.4)] transition-all transform hover:scale-105"

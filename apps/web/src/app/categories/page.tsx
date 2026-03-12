@@ -8,8 +8,13 @@ import {
     Category,
     updateCategory,
     deleteCategory,
+    getBudgetAlerts,
+    createBudgetAlert,
+    deleteBudgetAlert,
+    BudgetAlert,
 } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
+import { money } from "@/lib/format";
 
 function loadCategories() {
     return apiFetch("/categories").then((res) => res as Category[]);
@@ -22,6 +27,12 @@ export default function CategoriesPage() {
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
 
+    // Budget alerts state
+    const [alerts, setAlerts] = useState<BudgetAlert[]>([]);
+    const [showAlertModal, setShowAlertModal] = useState(false);
+    const [alertCatId, setAlertCatId] = useState<number | null>(null);
+    const [alertLimit, setAlertLimit] = useState("");
+
     // Edit state
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editName, setEditName] = useState("");
@@ -32,8 +43,12 @@ export default function CategoriesPage() {
         try {
             setErr(null);
             setLoading(true);
-            const data = await loadCategories();
+            const [data, alertsData] = await Promise.all([
+                loadCategories(),
+                getBudgetAlerts().catch(() => []),
+            ]);
             setCats(data);
+            setAlerts(alertsData);
         } catch (e: unknown) {
             if (e instanceof ApiError && e.status === 401) {
                 router.push("/login");
@@ -44,6 +59,31 @@ export default function CategoriesPage() {
             setLoading(false);
         }
     }, [router]);
+
+    async function handleCreateAlert() {
+        if (!alertCatId || !alertLimit) return;
+        try {
+            await createBudgetAlert({ category_id: alertCatId, monthly_limit: parseFloat(alertLimit) });
+            addToast("Alerte budget créée !", "success");
+            setShowAlertModal(false);
+            setAlertLimit("");
+            setAlertCatId(null);
+            load();
+        } catch (e: unknown) {
+            addToast((e as Error)?.message ?? "Erreur", "error");
+        }
+    }
+
+    async function handleDeleteAlert(id: number) {
+        if (!confirm("Supprimer cette alerte budget ?")) return;
+        try {
+            await deleteBudgetAlert(id);
+            addToast("Alerte supprimée", "success");
+            load();
+        } catch (e: unknown) {
+            addToast((e as Error)?.message ?? "Erreur", "error");
+        }
+    }
 
     useEffect(() => {
         load();
@@ -93,12 +133,98 @@ export default function CategoriesPage() {
 
     return (
         <main className="max-w-4xl mx-auto space-y-10 pb-16">
-            <header className="animate-fade-in-up">
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Catégories</h1>
-                <p className="text-sm opacity-70 mt-3">
-                    Gère tes postes de dépenses et de revenus. Définis des limites de budget mensuelles.
-                </p>
+            <header className="animate-fade-in-up flex items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Catégories</h1>
+                    <p className="text-sm opacity-70 mt-3">
+                        Gère tes postes de dépenses et de revenus. Définis des limites de budget mensuelles.
+                    </p>
+                </div>
+                <button
+                    onClick={() => setShowAlertModal(true)}
+                    className="px-4 py-2.5 rounded-xl bg-orange-500/20 border border-orange-500/30 hover:bg-orange-500/30 text-orange-300 text-sm font-semibold transition-all shrink-0"
+                >
+                    + Alerte Budget
+                </button>
             </header>
+
+            {/* Modal création alerte */}
+            {showAlertModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={(e) => { if (e.target === e.currentTarget) setShowAlertModal(false); }}>
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => setShowAlertModal(false)} />
+                    <div className="relative z-10 w-full max-w-md rounded-2xl bg-[#0f0f10] border border-white/10 shadow-2xl p-6 space-y-5">
+                        <h3 className="text-lg font-bold">Nouvelle alerte budget</h3>
+                        <div className="space-y-4">
+                            <label className="block text-sm font-medium text-white/70">
+                                Catégorie
+                                <select
+                                    className="w-full mt-2 bg-black/40 border border-white/10 py-3 px-4 rounded-xl text-sm"
+                                    value={alertCatId ?? ""}
+                                    onChange={(e) => setAlertCatId(Number(e.target.value))}
+                                    aria-label="Catégorie de l'alerte"
+                                >
+                                    <option value="">Choisir une catégorie...</option>
+                                    {cats.filter(c => c.type === "expense").map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="block text-sm font-medium text-white/70">
+                                Limite mensuelle ($)
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={alertLimit}
+                                    onChange={(e) => setAlertLimit(e.target.value)}
+                                    placeholder="ex: 500"
+                                    className="w-full mt-2 bg-black/40 border border-white/10 py-3 px-4 rounded-xl text-sm"
+                                />
+                            </label>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleCreateAlert}
+                                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-orange-600 to-red-600 text-white font-semibold text-sm transition-all hover:brightness-110"
+                            >
+                                Créer l&apos;alerte
+                            </button>
+                            <button
+                                onClick={() => setShowAlertModal(false)}
+                                className="px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-sm font-medium"
+                            >
+                                Annuler
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Alertes budget existantes */}
+            {alerts.length > 0 && (
+                <section className="rounded-3xl bg-orange-500/10 border border-orange-500/20 p-6 animate-fade-in-up">
+                    <div className="text-sm font-semibold text-orange-300 mb-4">Alertes Budget Configurées</div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {alerts.map((a) => (
+                            <div key={a.id} className="flex items-center justify-between p-4 rounded-xl bg-black/30 border border-orange-500/10">
+                                <div>
+                                    <div className="font-semibold text-sm">{a.category_name}</div>
+                                    <div className="text-xs opacity-60 mt-0.5">Limite: {money(a.monthly_limit)}/mois</div>
+                                </div>
+                                <button
+                                    onClick={() => handleDeleteAlert(a.id)}
+                                    className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs border border-red-500/20 transition-colors"
+                                    title="Supprimer l'alerte"
+                                >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M18 6 6 18M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
 
             {err && (
                 <div className="rounded-3xl p-6 relative overflow-hidden backdrop-blur-md animate-fade-in-up delay-100" style={{ borderColor: "rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.1)", boxShadow: "0 0 30px rgba(239,68,68,0.1)" }}>

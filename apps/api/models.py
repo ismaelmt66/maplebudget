@@ -56,6 +56,10 @@ class Transaction(Base):
     bank_connection_id: Mapped[int | None] = mapped_column(ForeignKey("bank_connections.id"), nullable=True)
     bank_connection: Mapped["BankConnection | None"] = relationship(back_populates="transactions")
 
+    # Champs pour les transactions récurrentes
+    is_recurring: Mapped[bool] = mapped_column(default=False)
+    recurrence_interval: Mapped[str | None] = mapped_column(String(16), nullable=True)  # 'daily'|'weekly'|'monthly'|'yearly'
+
 
 # --- Goals ---
 class Goal(Base):
@@ -125,3 +129,36 @@ class BankConnection(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped["User"] = relationship(back_populates="bank_connections")
     transactions: Mapped[list["Transaction"]] = relationship(back_populates="bank_connection", cascade="all, delete-orphan")
+
+
+class BudgetAlert(Base):
+    """Alerte budget : seuil mensuel par catégorie."""
+    __tablename__ = "budget_alerts"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
+    monthly_limit: Mapped[float] = mapped_column(Numeric(12, 2))
+    created_at: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD
+
+    user: Mapped["User"] = relationship()
+    category: Mapped["Category"] = relationship()
+
+
+class RecurringTransaction(Base):
+    """Transaction récurrente planifiée (modèle + logique d'auto-génération)."""
+    __tablename__ = "recurring_transactions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    amount: Mapped[float] = mapped_column(Numeric(12, 2))
+    frequency: Mapped[str] = mapped_column(String(20))  # 'weekly' | 'monthly' | 'yearly'
+    next_date: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD
+    note: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(default=True)
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
+
+    user: Mapped["User"] = relationship()
+    category: Mapped["Category"] = relationship()

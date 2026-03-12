@@ -8,3 +8,4 @@ python-multipart
 anthropic
 groq
 python-dotenv
+python-dateutil
