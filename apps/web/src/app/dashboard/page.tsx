@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, getCategories, getTransactions, Category, Transaction } from "@/lib/api";
 import BudgetAlertBanner from "@/components/BudgetAlertBanner";
+import HealthScoreGauge from "@/components/HealthScoreGauge";
 
 // type d’aide utilisé uniquement dans ce fichier pour traiter les données de
 // transaction ; nous enrichissons le `Transaction` renvoyé par l’API avec des
@@ -708,6 +709,11 @@ export default function DashboardPage(): React.JSX.Element {
         <KPI label="Dépenses" value={money(totals.expense)} hint="selon filtres" tone="warn" />
         <KPI label="Net" value={money(totals.net)} hint={`Signal: ${signal.label}`} tone={signal.tone} />
         <KPI label="Transactions" value={num(totals.count)} hint="dans la période" tone="neutral" />
+      </section>
+
+      {/* Health Score Gauge */}
+      <section className="animate-fade-in-up delay-150">
+        <HealthScoreGauge />
       </section>
 
       <section className="col-span-12 rounded-3xl bg-black/40 border border-white/5 p-8 animate-fade-in-up delay-200">

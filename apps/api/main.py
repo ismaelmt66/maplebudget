@@ -777,6 +777,154 @@ def get_budget_summary(
     )
 
 
+@app.get("/dashboard/health-score", response_model=schemas.HealthScoreResponse)
+def get_health_score(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Calculate a 0-100 financial health score for the current user."""
+    today = dt_date.today()
+    month_start = today.replace(day=1).isoformat()
+    if today.month == 12:
+        month_end = today.replace(year=today.year + 1, month=1, day=1).isoformat()
+    else:
+        month_end = today.replace(month=today.month + 1, day=1).isoformat()
+
+    # --- 1. Savings rate score ---
+    txs_this_month = (
+        db.query(models.Transaction, models.Category)
+        .join(models.Category, models.Transaction.category_id == models.Category.id)
+        .filter(
+            models.Transaction.user_id == current.id,
+            models.Transaction.date >= month_start,
+            models.Transaction.date < month_end,
+        )
+        .all()
+    )
+
+    income = sum(float(t.amount) for t, c in txs_this_month if c.type == "income")
+    expenses = sum(float(t.amount) for t, c in txs_this_month if c.type == "expense")
+
+    if income > 0:
+        savings_rate = max(0.0, (income - expenses) / income * 100)
+        savings_rate_score = min(100.0, savings_rate)
+    else:
+        savings_rate_score = 50.0
+
+    # --- 2. Budget adherence score ---
+    budgeted_cats = (
+        db.query(models.Category)
+        .filter(
+            models.Category.user_id == current.id,
+            models.Category.budget_limit.isnot(None),
+            models.Category.type == "expense",
+        )
+        .all()
+    )
+
+    over_budget_categories = 0
+    if budgeted_cats:
+        adherences = []
+        for cat in budgeted_cats:
+            spent = (
+                db.query(func.coalesce(func.sum(models.Transaction.amount), 0))
+                .filter(
+                    models.Transaction.user_id == current.id,
+                    models.Transaction.category_id == cat.id,
+                    models.Transaction.date >= month_start,
+                    models.Transaction.date < month_end,
+                )
+                .scalar()
+                or 0
+            )
+            spent = float(spent)
+            budget_limit = float(cat.budget_limit)  # type: ignore[arg-type]
+            if budget_limit > 0:
+                pct_over = max(0.0, (spent / budget_limit * 100) - 100)
+                adherences.append(max(0.0, 100.0 - pct_over))
+                if spent > budget_limit:
+                    over_budget_categories += 1
+        budget_adherence_score = sum(adherences) / len(adherences)
+    else:
+        budget_adherence_score = 70.0
+
+    # --- 3. Goals progress score ---
+    goals = (
+        db.query(models.Goal)
+        .filter(models.Goal.user_id == current.id)
+        .all()
+    )
+
+    no_goals = len(goals) == 0
+    if goals:
+        progresses = []
+        for g in goals:
+            target = float(g.target_amount)
+            current_amt = float(g.current_amount)
+            if target > 0:
+                progresses.append(min(100.0, current_amt / target * 100))
+            else:
+                progresses.append(0.0)
+        goals_progress_score = sum(progresses) / len(progresses)
+    else:
+        goals_progress_score = 50.0
+
+    # --- Composite score ---
+    raw_score = (
+        savings_rate_score * 0.30
+        + budget_adherence_score * 0.40
+        + goals_progress_score * 0.30
+    )
+    score = int(round(max(0.0, min(100.0, raw_score))))
+
+    # --- Color & label ---
+    if score <= 30:
+        color = "red"
+        label = "Critique"
+    elif score <= 60:
+        color = "orange"
+        label = "À améliorer"
+    elif score <= 80:
+        color = "yellow"
+        label = "Bon"
+    else:
+        color = "green"
+        label = "Excellent"
+
+    # --- Recommendations ---
+    recommendations: list[str] = []
+    if savings_rate_score < 30:
+        recommendations.append("Essayez de réduire vos dépenses non essentielles")
+    if over_budget_categories > 0:
+        recommendations.append(
+            f"Vous dépassez vos budgets dans {over_budget_categories} catégorie(s)"
+        )
+    if no_goals:
+        recommendations.append(
+            "Définissez des objectifs financiers pour mieux épargner"
+        )
+    if not budgeted_cats:
+        recommendations.append(
+            "Configurez des limites de budget pour mieux contrôler vos dépenses"
+        )
+    if not recommendations:
+        recommendations.append(
+            "Continuez ainsi ! Votre gestion financière est excellente"
+        )
+
+    return schemas.HealthScoreResponse(
+        score=score,
+        breakdown=schemas.HealthScoreBreakdown(
+            savings_rate=round(savings_rate_score, 1),
+            budget_adherence=round(budget_adherence_score, 1),
+            goals_progress=round(goals_progress_score, 1),
+        ),
+        color=color,
+        label=label,
+        recommendations=recommendations[:3],
+    )
+
+
 # ---------- Analytics (protected) ----------
 
 @app.get("/analytics/subscriptions", response_model=List[schemas.SubscriptionOut])

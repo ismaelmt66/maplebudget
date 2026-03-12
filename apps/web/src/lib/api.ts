@@ -487,3 +487,23 @@ export async function setupCategories(
     body: JSON.stringify({ categories }),
   }) as Promise<{ created: number; categories: Category[] }>;
 }
+
+/* ---------- Financial Health Score ---------- */
+
+export type HealthScoreBreakdown = {
+  savings_rate: number;
+  budget_adherence: number;
+  goals_progress: number;
+};
+
+export type HealthScoreResponse = {
+  score: number;
+  breakdown: HealthScoreBreakdown;
+  color: string;
+  label: string;
+  recommendations: string[];
+};
+
+export async function getHealthScore(): Promise<HealthScoreResponse> {
+  return apiFetch("/dashboard/health-score") as Promise<HealthScoreResponse>;
+}
