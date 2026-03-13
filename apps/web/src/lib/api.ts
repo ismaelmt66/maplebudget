@@ -143,25 +143,33 @@ export async function getTransactions(): Promise<Transaction[]> {
   return apiFetch("/transactions") as Promise<Transaction[]>;
 }
 
-export async function downloadTransactionsCSV(): Promise<void> {
+export async function downloadTransactionsCSV(options?: { from_date?: string; to_date?: string }): Promise<void> {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  const url = `${API_URL}/transactions/export`;
-  
+  const qs = new URLSearchParams();
+  if (options?.from_date) qs.set("from_date", options.from_date);
+  if (options?.to_date) qs.set("to_date", options.to_date);
+
+  const base = typeof window !== "undefined"
+    ? `http://${window.location.hostname}:8000`
+    : (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000");
+
+  const url = `${base}/transactions/export/csv${qs.toString() ? `?${qs.toString()}` : ""}`;
+
   const response = await fetch(url, {
     method: "GET",
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
   });
-  
-  if (!response.ok) throw new Error("Failed to download CSV");
-  
+
+  if (!response.ok) throw new Error(`Export CSV échoué (${response.status})`);
+
   const blob = await response.blob();
   const downloadUrl = window.URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = downloadUrl;
-  link.download = "nexledger_transactions.csv";
+  link.download = `nexledger_transactions${options?.from_date ? `_${options.from_date}` : ""}.csv`;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -660,8 +668,8 @@ export async function deleteRecurringTransaction(id: number): Promise<void> {
   await apiFetch(`/recurring-transactions/${id}`, { method: "DELETE" });
 }
 
-export async function detectRecurringTransactions(): Promise<RecurringTransaction[]> {
-  return apiFetch("/transactions/suggest-category") as Promise<RecurringTransaction[]>;
+export async function detectRecurringTransactions(): Promise<{ detected: number; patterns: number; items: RecurringTransaction[] }> {
+  return apiFetch("/recurring-transactions/detect", { method: "POST" }) as Promise<{ detected: number; patterns: number; items: RecurringTransaction[] }>;
 }
 
 /* ---------- Onboarding ---------- */

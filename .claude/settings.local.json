@@ -24,7 +24,12 @@
       "Bash(taskkill /F /PID 6160)",
       "Bash(cmd /c \"taskkill /F /PID 36260\")",
       "Bash(cmd /c \"taskkill /F /PID 6160\")",
-      "Bash(python -c \"import subprocess; subprocess.run\\([''taskkill'', ''/F'', ''/PID'', ''36260''], capture_output=True\\); subprocess.run\\([''taskkill'', ''/F'', ''/PID'', ''6160''], capture_output=True\\); print\\(''done''\\)\")"
+      "Bash(python -c \"import subprocess; subprocess.run\\([''taskkill'', ''/F'', ''/PID'', ''36260''], capture_output=True\\); subprocess.run\\([''taskkill'', ''/F'', ''/PID'', ''6160''], capture_output=True\\); print\\(''done''\\)\")",
+      "Bash(for dir:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/takou/Documents/maplebudget/**)",
+      "Bash(sed 's/response_model=.*//')",
+      "Bash(sed 's/,.*$//')"
     ]
   }
 }

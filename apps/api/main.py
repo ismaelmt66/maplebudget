@@ -1082,6 +1082,56 @@ def delete_recurring_transaction(
     return {"ok": True}
 
 
+@app.post("/recurring-transactions/detect")
+def detect_recurring_transactions(
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Analyse l'historique des transactions et détecte les patterns récurrents.
+
+    Crée automatiquement les RecurringTransaction manquantes pour les patterns
+    détectés avec un score de confiance >= 0.5. Retourne la liste complète après détection.
+    """
+    from services.recurring_detection import RecurringDetectionEngine
+
+    engine = RecurringDetectionEngine(db=db, user_id=current.id)
+    patterns = engine.detect_recurring_patterns()
+
+    created = 0
+    for p in patterns:
+        if p["confidence_score"] < 0.5:
+            continue
+
+        # Éviter les doublons : vérifier si ce nom existe déjà
+        existing = db.query(models.RecurringTransaction).filter(
+            models.RecurringTransaction.user_id == current.id,
+            models.RecurringTransaction.name == p["name"],
+        ).first()
+
+        if existing:
+            continue
+
+        rt = models.RecurringTransaction(
+            user_id=current.id,
+            name=p["name"],
+            amount=p["amount"],
+            frequency=p["frequency"],
+            next_date=p["next_occurrence"],
+            note=f"Détecté automatiquement (confiance {int(p['confidence_score'] * 100)}%)",
+            is_active=True,
+        )
+        db.add(rt)
+        created += 1
+
+    db.commit()
+
+    all_rts = db.query(models.RecurringTransaction).filter(
+        models.RecurringTransaction.user_id == current.id
+    ).all()
+
+    return {"detected": created, "patterns": len(patterns), "items": all_rts}
+
+
 @app.get("/budget-alerts/summary")
 def budget_alerts_summary(
     db: Session = Depends(get_db),
@@ -2232,6 +2282,29 @@ def disable_2fa(
 @app.get("/auth/2fa/status")
 def get_2fa_status(current: models.User = Depends(get_current_user)):
     return {"enabled": current.totp_enabled}
+
+
+@app.post("/auth/change-password")
+def change_password(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_current_user),
+):
+    """Change le mot de passe après vérification de l'ancien."""
+    old_password = payload.get("old_password", "")
+    new_password = payload.get("new_password", "")
+
+    if not old_password or not new_password:
+        raise HTTPException(status_code=400, detail="Champs requis manquants.")
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Le nouveau mot de passe doit faire au moins 8 caractères.")
+    if not verify_password(old_password, current.hashed_password):
+        raise HTTPException(status_code=400, detail="Mot de passe actuel incorrect.")
+
+    current.hashed_password = hash_password(new_password)
+    db.commit()
+    _log_audit(db, current.id, "password_change")
+    return {"ok": True, "message": "Mot de passe modifié avec succès."}
 
 
 # ---------- Canada REER/CELI Optimizer ----------

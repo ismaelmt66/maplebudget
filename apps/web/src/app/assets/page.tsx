@@ -348,8 +348,24 @@ export default function AssetsPage() {
     // AI analysis
     const [aiReport, setAiReport] = useState<string | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
+    const aiLoadedRef = useRef(false);
 
-    const load = useCallback(async () => {
+    const loadAIAnalysis = useCallback(async () => {
+        if (aiLoading) return;
+        setAiLoading(true);
+        setAiReport(null);
+        try {
+            const res = await getPatrimoineAIAnalysis();
+            setAiReport(res.report);
+            aiLoadedRef.current = true;
+        } catch {
+            setAiReport("Erreur lors de l'analyse. Vérifiez votre connexion et réessayez.");
+        } finally {
+            setAiLoading(false);
+        }
+    }, [aiLoading]);
+
+    const load = useCallback(async (triggerAI = false) => {
         try {
             setLoading(true);
             setErr(null);
@@ -357,13 +373,17 @@ export default function AssetsPage() {
             setAssets(a);
             setCategories(c);
             setRules(r);
+            // Re-trigger AI if data changed and we've already loaded it once
+            if (triggerAI && aiLoadedRef.current) {
+                loadAIAnalysis();
+            }
         } catch (e: unknown) {
             if (e instanceof ApiError && e.status === 401) router.push("/login");
             else setErr((e as Error).message || "Erreur de chargement");
         } finally {
             setLoading(false);
         }
-    }, [router]);
+    }, [router, loadAIAnalysis]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -401,13 +421,13 @@ export default function AssetsPage() {
             else await createAsset(payload);
             setIsAssetModalOpen(false);
             setEditingAsset(null);
-            load();
+            load(true);
         } catch (e: unknown) { alert((e as Error).message); }
     };
 
     const handleDelete = async (id: number) => {
         if (!confirm("Supprimer cet actif ?")) return;
-        try { await deleteAsset(id); setSelectedAsset(null); load(); } catch (e: unknown) { alert((e as Error).message); }
+        try { await deleteAsset(id); setSelectedAsset(null); load(true); } catch (e: unknown) { alert((e as Error).message); }
     };
 
     // ─── Rule Save ────────────────────────────────────────────────────────────
@@ -451,13 +471,7 @@ export default function AssetsPage() {
     };
 
     // ─── AI Analysis ──────────────────────────────────────────────────────────
-    const handleAIAnalysis = async () => {
-        setAiLoading(true);
-        setAiReport(null);
-        try { const res = await getPatrimoineAIAnalysis(); setAiReport(res.report); }
-        catch { setAiReport("Erreur lors de l'analyse."); }
-        finally { setAiLoading(false); }
-    };
+    const handleAIAnalysis = loadAIAnalysis;
 
     const typeLabel: Record<string, string> = { checking: "Compte Courant", savings: "Épargne", stock: "Bourse", crypto: "Crypto", liability: "Dette", real_estate: "Immobilier" };
     const typeGradient: Record<string, string> = { checking: "from-blue-500/20 to-blue-900/10 border-blue-500/20", savings: "from-emerald-500/20 to-emerald-900/10 border-emerald-500/20", stock: "from-purple-500/20 to-purple-900/10 border-purple-500/20", crypto: "from-orange-500/20 to-orange-900/10 border-orange-500/20", liability: "from-red-500/20 to-red-900/10 border-red-500/20", real_estate: "from-cyan-500/20 to-cyan-900/10 border-cyan-500/20" };
@@ -517,7 +531,13 @@ export default function AssetsPage() {
                 {(["assets", "rules", "ai"] as const).map(tab => (
                     <button
                         key={tab}
-                        onClick={() => setActiveTab(tab)}
+                        onClick={() => {
+                            setActiveTab(tab);
+                            // Auto-trigger AI analysis on first visit to the AI tab
+                            if (tab === "ai" && !aiReport && !aiLoading) {
+                                loadAIAnalysis();
+                            }
+                        }}
                         className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === tab ? "bg-white/15 text-white shadow-lg" : "text-white/40 hover:text-white/70"}`}
                     >
                         {tab === "assets" ? "🏦 Actifs" : tab === "rules" ? "⚙️ Automatisation" : "🧠 Analyse IA"}
@@ -711,19 +731,31 @@ export default function AssetsPage() {
                             <h2 className="text-2xl font-bold">Analyse IA de votre Patrimoine</h2>
                             <p className="text-sm text-white/50 mt-1">Score de santé, fonds d&apos;urgence, diversification, et recommandations personnalisées.</p>
                         </div>
-                        <Button onClick={handleAIAnalysis} disabled={aiLoading}>
-                            {aiLoading ? "Analyse en cours..." : "🧠 Analyser mon Patrimoine"}
-                        </Button>
+                        <button
+                            onClick={handleAIAnalysis}
+                            disabled={aiLoading}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-sm font-medium hover:bg-emerald-500/25 transition-all disabled:opacity-50"
+                        >
+                            {aiLoading ? (
+                                <span className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                            )}
+                            {aiLoading ? "Analyse..." : "Actualiser"}
+                        </button>
                     </div>
 
                     {aiLoading && (
                         <div className="rounded-3xl bg-black/40 border border-emerald-500/20 p-8 flex items-center gap-4">
-                            <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
-                            <span className="text-white/60">Le moteur IA analyse votre portefeuille...</span>
+                            <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                            <div>
+                                <div className="text-white/80 font-medium">Analyse en cours...</div>
+                                <div className="text-white/40 text-sm mt-0.5">Le moteur IA analyse votre portefeuille, projections et recommandations.</div>
+                            </div>
                         </div>
                     )}
 
-                    {aiReport && (
+                    {aiReport && !aiLoading && (
                         <div className="rounded-3xl bg-black/40 border border-white/10 backdrop-blur-xl p-6 md:p-8">
                             <RichMarkdown text={aiReport} />
                         </div>
@@ -732,7 +764,7 @@ export default function AssetsPage() {
                     {!aiReport && !aiLoading && (
                         <div className="text-center py-20 rounded-3xl bg-white/5 border border-dashed border-white/20">
                             <div className="text-5xl mb-4">🧠</div>
-                            <p className="text-white/50">Cliquez sur &quot;Analyser mon Patrimoine&quot; pour obtenir un rapport complet.</p>
+                            <p className="text-white/50">L&apos;analyse se charge automatiquement...</p>
                         </div>
                     )}
                 </section>

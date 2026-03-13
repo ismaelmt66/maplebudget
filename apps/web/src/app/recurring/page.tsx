@@ -60,11 +60,15 @@ export default function RecurringPage() {
   async function handleDetect() {
     try {
       setDetecting(true);
-      const detected = await detectRecurringTransactions();
-      addToast(`${detected.length} transaction(s) récurrente(s) détectée(s)`, "success");
-      await loadItems();
+      const result = await detectRecurringTransactions();
+      if (result.detected > 0) {
+        addToast(`${result.detected} nouvelle(s) transaction(s) récurrente(s) détectée(s) sur ${result.patterns} pattern(s) analysé(s)`, "success");
+      } else {
+        addToast(`Analyse terminée — ${result.patterns} pattern(s) analysé(s), aucun nouveau résultat`, "info");
+      }
+      setItems(result.items);
     } catch {
-      addToast("Erreur lors de la détection", "error");
+      addToast("Erreur lors de la détection automatique", "error");
     } finally {
       setDetecting(false);
     }
