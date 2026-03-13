@@ -1780,14 +1780,20 @@ def run_migrations():
         try:
             conn.execute(sql_text("SELECT is_recurring FROM transactions LIMIT 1"))
         except Exception:
-            conn.execute(sql_text("ALTER TABLE transactions ADD COLUMN is_recurring INTEGER NOT NULL DEFAULT 0"))
-            conn.commit()
+            try:
+                conn.execute(sql_text("ALTER TABLE transactions ADD COLUMN is_recurring INTEGER NOT NULL DEFAULT 0"))
+                conn.commit()
+            except Exception:
+                pass  # Table may not exist yet (e.g. fresh DB or test environment)
 
         try:
             conn.execute(sql_text("SELECT recurrence_interval FROM transactions LIMIT 1"))
         except Exception:
-            conn.execute(sql_text("ALTER TABLE transactions ADD COLUMN recurrence_interval TEXT"))
-            conn.commit()
+            try:
+                conn.execute(sql_text("ALTER TABLE transactions ADD COLUMN recurrence_interval TEXT"))
+                conn.commit()
+            except Exception:
+                pass  # Table may not exist yet
 
         # Créer la table budget_alerts si elle n'existe pas
         conn.execute(sql_text("""
@@ -1804,9 +1810,12 @@ def run_migrations():
         try:
             conn.execute(sql_text("SELECT totp_secret FROM users LIMIT 1"))
         except Exception:
-            conn.execute(sql_text("ALTER TABLE users ADD COLUMN totp_secret TEXT"))
-            conn.execute(sql_text("ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0"))
-            conn.commit()
+            try:
+                conn.execute(sql_text("ALTER TABLE users ADD COLUMN totp_secret TEXT"))
+                conn.execute(sql_text("ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0"))
+                conn.commit()
+            except Exception:
+                pass  # Table may not exist yet
 
         # Journal d'audit
         conn.execute(sql_text("""

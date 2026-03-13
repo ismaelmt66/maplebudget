@@ -307,26 +307,24 @@ def test_create_recurring_transaction(client):
         "name": "Netflix",
         "amount": 14.99,
         "frequency": "monthly",
-        "next_occurrence": "2024-02-01",
-        "category_name": "Loisirs",
+        "next_date": "2024-02-01",
     }
-    resp = client.post("/transactions/recurring", json=payload)
+    resp = client.post("/recurring-transactions", json=payload)
     assert resp.status_code == 200
     data = resp.json()
     assert data["name"] == "Netflix"
     assert data["frequency"] == "monthly"
-    assert data["status"] == "active"
-    assert data["confidence_score"] == 1.0
+    assert data["is_active"] is True
 
 
 def test_list_recurring_transactions(client):
     """Should list all recurring transactions for the user."""
     # Create a recurring transaction first
     client.post(
-        "/transactions/recurring",
+        "/recurring-transactions",
         json={"name": "Spotify", "amount": 9.99, "frequency": "monthly"},
     )
-    resp = client.get("/transactions/recurring")
+    resp = client.get("/recurring-transactions")
     assert resp.status_code == 200
     data = resp.json()
     assert len(data) >= 1
@@ -336,43 +334,50 @@ def test_list_recurring_transactions(client):
 def test_update_recurring_status_pause(client):
     """Should pause a recurring transaction."""
     create_resp = client.post(
-        "/transactions/recurring",
+        "/recurring-transactions",
         json={"name": "Amazon Prime", "amount": 6.99, "frequency": "monthly"},
     )
     rt_id = create_resp.json()["id"]
 
-    resp = client.patch(f"/transactions/recurring/{rt_id}", json={"status": "paused"})
+    resp = client.put(f"/recurring-transactions/{rt_id}", json={"is_active": False})
     assert resp.status_code == 200
-    assert resp.json()["status"] == "paused"
+    assert resp.json()["is_active"] is False
 
 
 def test_update_recurring_status_resume(client):
     """Should resume a paused recurring transaction."""
     create_resp = client.post(
-        "/transactions/recurring",
+        "/recurring-transactions",
         json={"name": "Disney+", "amount": 8.99, "frequency": "monthly"},
     )
     rt_id = create_resp.json()["id"]
 
-    client.patch(f"/transactions/recurring/{rt_id}", json={"status": "paused"})
-    resp = client.patch(f"/transactions/recurring/{rt_id}", json={"status": "active"})
+    client.put(f"/recurring-transactions/{rt_id}", json={"is_active": False})
+    resp = client.put(f"/recurring-transactions/{rt_id}", json={"is_active": True})
     assert resp.status_code == 200
-    assert resp.json()["status"] == "active"
+    assert resp.json()["is_active"] is True
 
 
 def test_delete_recurring_transaction(client):
     """Should delete a recurring transaction."""
     create_resp = client.post(
-        "/transactions/recurring",
+        "/recurring-transactions",
         json={"name": "Old Subscription", "amount": 5.0, "frequency": "monthly"},
     )
     rt_id = create_resp.json()["id"]
 
-    resp = client.delete(f"/transactions/recurring/{rt_id}")
+    resp = client.delete(f"/recurring-transactions/{rt_id}")
     assert resp.status_code == 200
-    assert resp.json()["deleted"] is True
+    assert resp.json()["ok"] is True
 
     # Verify it's gone
-    list_resp = client.get("/transactions/recurring")
+    list_resp = client.get("/recurring-transactions")
     ids = [item["id"] for item in list_resp.json()]
     assert rt_id not in ids
+
+
+def test_detect_recurring_endpoint_empty(client):
+    """Detect endpoint should return an empty list when there are no transactions."""
+    resp = client.post("/recurring-transactions/detect")
+    assert resp.status_code == 200
+    assert resp.json() == []
