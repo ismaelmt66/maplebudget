@@ -229,7 +229,7 @@ class RecurringTransaction(Base):
     is_active: Mapped[bool] = mapped_column(default=True)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
+    category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"), nullable=True)
 
     user: Mapped["User"] = relationship()
     category: Mapped["Category"] = relationship()
