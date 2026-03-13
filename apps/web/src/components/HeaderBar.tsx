@@ -201,36 +201,37 @@ export default function HeaderBar() {
           {token && (
             <nav className="hidden lg:flex items-center gap-1.5 absolute left-1/2 -translate-x-1/2">
               <NavLink href="/dashboard" label="Dashboard" icon={Icons.Dashboard} />
-              <NavLink href="/transactions" label="Transactions" icon={Icons.Transactions} />
-              <NavLink href="/recurring" label="Récurrentes" icon={Icons.Recurring} />
 
-              <div className="w-px h-6 bg-white/10 mx-2" /> {/* Divider */}
+              <Dropdown label="Finances" icon={Icons.Transactions}>
+                <DropdownItem href="/transactions" label="Transactions" desc="Historique de toutes vos opérations" icon={Icons.Transactions} />
+                <DropdownItem href="/categories" label="Catégories" desc="Organisez vos dépenses" icon={Icons.Categories} />
+                <DropdownItem href="/budget" label="Budgets" desc="Alertes et suivi budgétaire" icon={Icons.Budget} />
+                <DropdownItem href="/recurring" label="Dépenses récurrentes" desc="Abonnements et paiements périodiques" icon={Icons.Recurring} />
+              </Dropdown>
+
+              <Dropdown label="Patrimoine" icon={Icons.Patrimoine}>
+                <DropdownItem href="/assets" label="Comptes & Actifs" desc="Suivez tous vos comptes et investissements" icon={Icons.Patrimoine} />
+                <DropdownItem href="/subscriptions" label="Abonnements" desc="Traqueur de frais fixes" icon={Icons.Transactions} />
+                <DropdownItem href="/canada" label="🍁 REER / CELI" desc="Optimiseur fiscal canadien" icon={Icons.Goals} />
+              </Dropdown>
+
+              <Dropdown label="Planification" icon={Icons.Goals}>
+                <DropdownItem href="/simulator" label="Simulateur financier" desc="Projections et scénarios futurs" icon={Icons.Magic} />
+                <DropdownItem href="/goals" label="Objectifs" desc="Épargnez pour l'avenir" icon={Icons.Goals} />
+                <DropdownItem href="/calendar" label="Calendrier financier" desc="Transactions jour par jour" icon={Icons.Achievements} />
+              </Dropdown>
+
+              <Dropdown label="Insights" icon={Icons.Analytics}>
+                <DropdownItem href="/coach" label="Nexus IA" desc="Votre assistant financier IA" icon={Icons.Coach} />
+                <DropdownItem href="/analytics" label="Analytique" desc="Graphiques et tendances avancés" icon={Icons.Analytics} />
+                <DropdownItem href="/challenges" label="Défis" desc="Défis financiers hebdomadaires" icon={Icons.Achievements} />
+                <DropdownItem href="/achievements" label="Trophées" desc="Récompenses de progression" icon={Icons.Achievements} />
+                <DropdownItem href="/community" label="Score Communautaire" desc="Comparez vos habitudes anonymement" icon={Icons.Analytics} />
+              </Dropdown>
 
               <Dropdown label="Outils" icon={Icons.Tools}>
-                <DropdownItem href="/budget" label="Budgets" desc="Alertes et suivi budgétaire" icon={Icons.Budget} />
-                <DropdownItem href="/assets" label="Patrimoine Net" desc="Suivez tous vos comptes" icon={Icons.Patrimoine} />
-                <DropdownItem href="/subscriptions" label="Abonnements" desc="Traqueur de frais fixes" icon={Icons.Transactions} />
-                <DropdownItem href="/goals" label="Objectifs" desc="Épargnez pour l'avenir" icon={Icons.Goals} />
-                <DropdownItem href="/categories" label="Catégories & Budgets" desc="Organisez vos dépenses" icon={Icons.Categories} />
-                <DropdownItem href="/calendar" label="Calendrier" desc="Transactions jour par jour" icon={Icons.Achievements} />
-                <DropdownItem href="/canada" label="🍁 REER / CELI" desc="Optimiseur fiscal canadien" icon={Icons.Goals} />
-                <DropdownItem href="/bank" label="🏦 Connexion Bancaire" desc="Importez vos transactions auto" icon={Icons.Patrimoine} />
-              </Dropdown>
-
-              <Dropdown label="Intelligence" icon={Icons.Magic}>
-                <DropdownItem href="/coach" label="Nexus" desc="Votre assistant financier IA" icon={Icons.Coach} />
-                <DropdownItem href="/simulator" label="Simulateur" desc="Et si j'économisais plus ?" icon={Icons.Magic} />
-                <DropdownItem href="/challenges" label="Défis" desc="Défis financiers hebdomadaires" icon={Icons.Achievements} />
-                <DropdownItem href="/community" label="Score Communautaire" desc="Comparez vos habitudes anonymement" icon={Icons.Analytics} />
-                <DropdownItem href="/analytics" label="Analytique" desc="Graphiques et tendances avancés" icon={Icons.Analytics} />
-                <DropdownItem href="/achievements" label="Trophées" desc="Récompenses de progression" icon={Icons.Achievements} />
-              </Dropdown>
-
-              <div className="w-px h-6 bg-white/10 mx-2" />
-
-              <Dropdown label="Social" icon={Icons.Coach}>
+                <DropdownItem href="/bank" label="Connexion Bancaire" desc="Importez vos transactions auto" icon={Icons.Patrimoine} />
                 <DropdownItem href="/household" label="Mode Couple / Famille" desc="Budget partagé du foyer" icon={Icons.Goals} />
-                <DropdownItem href="/community" label="Score Communautaire" desc="Benchmark anonyme" icon={Icons.Analytics} />
               </Dropdown>
             </nav>
           )}
@@ -297,26 +298,28 @@ export default function HeaderBar() {
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && token && (
         <div className="lg:hidden absolute top-full left-0 w-full bg-black/90 backdrop-blur-3xl border-b border-white/10 shadow-2xl p-4 flex flex-col gap-2 overflow-y-auto max-h-[80vh]">
-          <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl bg-white/5 font-medium">Dashboard</Link>
-          <Link href="/transactions" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl bg-white/5 font-medium">Transactions</Link>
-          <Link href="/recurring" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl bg-white/5 font-medium">Récurrentes</Link>
-          <div className="text-xs font-bold text-white/40 uppercase tracking-widest px-2 mt-2">Outils</div>
+          <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl bg-white/5 font-medium">📊 Dashboard</Link>
+          <div className="text-xs font-bold text-blue-400/60 uppercase tracking-widest px-2 mt-2">Finances</div>
+          <Link href="/transactions" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Transactions</Link>
+          <Link href="/categories" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Catégories</Link>
           <Link href="/budget" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">💰 Budgets</Link>
-          <Link href="/assets" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Patrimoine Net</Link>
+          <Link href="/recurring" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Dépenses récurrentes</Link>
+          <div className="text-xs font-bold text-emerald-400/60 uppercase tracking-widest px-2 mt-2">Patrimoine</div>
+          <Link href="/assets" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Comptes & Actifs</Link>
           <Link href="/subscriptions" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Abonnements</Link>
-          <Link href="/goals" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Objectifs</Link>
-          <Link href="/categories" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Catégories & Budgets</Link>
-          <Link href="/calendar" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Calendrier</Link>
           <Link href="/canada" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">🍁 REER / CELI</Link>
-          <Link href="/bank" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">🏦 Connexion Bancaire</Link>
-          <div className="text-xs font-bold text-purple-400/60 uppercase tracking-widest px-2 mt-2">Intelligence</div>
-          <Link href="/coach" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Coach IA</Link>
-          <Link href="/simulator" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Simulateur</Link>
-          <Link href="/challenges" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Défis</Link>
+          <div className="text-xs font-bold text-violet-400/60 uppercase tracking-widest px-2 mt-2">Planification</div>
+          <Link href="/simulator" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Simulateur financier</Link>
+          <Link href="/goals" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Objectifs</Link>
+          <Link href="/calendar" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Calendrier financier</Link>
+          <div className="text-xs font-bold text-purple-400/60 uppercase tracking-widest px-2 mt-2">Insights</div>
+          <Link href="/coach" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">🧠 Nexus IA</Link>
           <Link href="/analytics" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Analytique</Link>
+          <Link href="/challenges" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Défis</Link>
           <Link href="/achievements" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Trophées</Link>
           <Link href="/community" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">Score Communautaire</Link>
-          <div className="text-xs font-bold text-pink-400/60 uppercase tracking-widest px-2 mt-2">Social</div>
+          <div className="text-xs font-bold text-orange-400/60 uppercase tracking-widest px-2 mt-2">Outils</div>
+          <Link href="/bank" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">🏦 Connexion Bancaire</Link>
           <Link href="/household" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">👥 Mode Couple / Famille</Link>
           <div className="h-px w-full bg-white/10 my-2"></div>
           <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-white/5">⚙️ Paramètres</Link>

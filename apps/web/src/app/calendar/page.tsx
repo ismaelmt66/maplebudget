@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getTransactions, Transaction } from "@/lib/api";
 import { money } from "@/lib/format";
-import Link from "next/link";
+import { useExport } from "@/hooks/useExport";
 
 const DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const MONTHS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
@@ -22,6 +22,7 @@ export default function CalendarPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth()); // 0-indexed
   const [selected, setSelected] = useState<DayData | null>(null);
+  const { loading: exporting, exportTransactions } = useExport();
 
   useEffect(() => {
     getTransactions()
@@ -85,10 +86,18 @@ export default function CalendarPage() {
           </h1>
           <p className="text-white/50 mt-1 text-sm">Visualise tes dépenses jour par jour.</p>
         </div>
-        <Link href="/transactions/export" className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white/70 hover:text-white hover:bg-white/10 transition-all">
+        <button
+          onClick={() => {
+            const firstDay = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+            const lastDay = `${year}-${String(month + 1).padStart(2, "0")}-${new Date(year, month + 1, 0).getDate()}`;
+            exportTransactions("csv", { date_from: firstDay, date_to: lastDay });
+          }}
+          disabled={exporting}
+          className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white/70 hover:text-white hover:bg-white/10 transition-all disabled:opacity-50"
+        >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-          Exporter CSV
-        </Link>
+          {exporting ? "Export…" : "Exporter CSV"}
+        </button>
       </div>
 
       {/* Résumé mensuel */}

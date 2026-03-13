@@ -661,7 +661,7 @@ export async function deleteRecurringTransaction(id: number): Promise<void> {
 }
 
 export async function detectRecurringTransactions(): Promise<RecurringTransaction[]> {
-  return apiFetch("/transactions/suggest-category") as Promise<RecurringTransaction[]>;
+  return apiFetch("/recurring-transactions/detect", { method: "POST" }) as Promise<RecurringTransaction[]>;
 }
 
 /* ---------- Onboarding ---------- */
