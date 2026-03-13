@@ -459,6 +459,14 @@ export default function AssetsPage() {
         finally { setAiLoading(false); }
     };
 
+    // Auto-trigger AI analysis after assets load (debounced)
+    useEffect(() => {
+        if (assets.length === 0) return;
+        const timer = setTimeout(() => { handleAIAnalysis(); }, 800);
+        return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [assets]);
+
     const typeLabel: Record<string, string> = { checking: "Compte Courant", savings: "Épargne", stock: "Bourse", crypto: "Crypto", liability: "Dette", real_estate: "Immobilier" };
     const typeGradient: Record<string, string> = { checking: "from-blue-500/20 to-blue-900/10 border-blue-500/20", savings: "from-emerald-500/20 to-emerald-900/10 border-emerald-500/20", stock: "from-purple-500/20 to-purple-900/10 border-purple-500/20", crypto: "from-orange-500/20 to-orange-900/10 border-orange-500/20", liability: "from-red-500/20 to-red-900/10 border-red-500/20", real_estate: "from-cyan-500/20 to-cyan-900/10 border-cyan-500/20" };
     const incomeCategories = categories.filter(c => c.type === "income");
@@ -732,7 +740,7 @@ export default function AssetsPage() {
                     {!aiReport && !aiLoading && (
                         <div className="text-center py-20 rounded-3xl bg-white/5 border border-dashed border-white/20">
                             <div className="text-5xl mb-4">🧠</div>
-                            <p className="text-white/50">Cliquez sur &quot;Analyser mon Patrimoine&quot; pour obtenir un rapport complet.</p>
+                            <p className="text-white/50">L&apos;analyse se déclenche automatiquement. Ajoutez des actifs pour obtenir un rapport complet.</p>
                         </div>
                     )}
                 </section>
