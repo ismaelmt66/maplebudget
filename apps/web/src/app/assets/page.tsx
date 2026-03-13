@@ -459,13 +459,18 @@ export default function AssetsPage() {
         finally { setAiLoading(false); }
     };
 
-    // Auto-trigger AI analysis after assets load (debounced)
+    // Auto-trigger AI analysis when the meaningful composition of assets changes.
+    // Using count + rounded total balance as a fingerprint avoids spurious re-runs
+    // caused by reference changes while the actual data stays the same.
+    const assetFingerprint = assets.length > 0
+        ? `${assets.length}:${Math.round(assets.reduce((s, a) => s + a.balance, 0))}`
+        : "";
     useEffect(() => {
-        if (assets.length === 0) return;
+        if (!assetFingerprint) return;
         const timer = setTimeout(() => { handleAIAnalysis(); }, 800);
         return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [assets]);
+    }, [assetFingerprint]);
 
     const typeLabel: Record<string, string> = { checking: "Compte Courant", savings: "Épargne", stock: "Bourse", crypto: "Crypto", liability: "Dette", real_estate: "Immobilier" };
     const typeGradient: Record<string, string> = { checking: "from-blue-500/20 to-blue-900/10 border-blue-500/20", savings: "from-emerald-500/20 to-emerald-900/10 border-emerald-500/20", stock: "from-purple-500/20 to-purple-900/10 border-purple-500/20", crypto: "from-orange-500/20 to-orange-900/10 border-orange-500/20", liability: "from-red-500/20 to-red-900/10 border-red-500/20", real_estate: "from-cyan-500/20 to-cyan-900/10 border-cyan-500/20" };

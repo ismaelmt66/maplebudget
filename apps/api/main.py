@@ -1082,6 +1082,30 @@ def delete_recurring_transaction(
     return {"ok": True}
 
 
+def _compute_next_date(last_occurrence: str | None, frequency: str) -> str:
+    """Compute the next expected occurrence date based on the last occurrence and frequency."""
+    _FREQ_DAYS = {
+        "daily": 1,
+        "weekly": 7,
+        "biweekly": 14,
+        "monthly": 30,
+        "quarterly": 91,
+        "yearly": 365,
+    }
+    from datetime import timedelta
+    try:
+        base = dt_date.fromisoformat(last_occurrence) if last_occurrence else dt_date.today()
+    except (ValueError, TypeError):
+        base = dt_date.today()
+    delta = timedelta(days=_FREQ_DAYS.get(frequency, 30))
+    next_dt = base + delta
+    # If computed date is in the past, advance it forward by the same period until it's future
+    today = dt_date.today()
+    while next_dt < today:
+        next_dt += delta
+    return str(next_dt)
+
+
 @app.post("/recurring-transactions/detect")
 def detect_recurring_transactions(
     db: Session = Depends(get_db),
@@ -1113,7 +1137,9 @@ def detect_recurring_transactions(
             name=p["name"],
             amount=p["amount"],
             frequency=p["frequency"],
-            next_date=p.get("next_occurrence") or str(dt_date.today()),
+            next_date=p.get("next_occurrence") or _compute_next_date(
+                p.get("last_occurrence"), p["frequency"]
+            ),
             note=f"Détecté automatiquement (confiance: {int(p.get('confidence_score', 0) * 100)}%)",
             is_active=True,
         )
