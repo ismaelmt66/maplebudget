@@ -70,7 +70,7 @@ export function useExport(): UseExportReturn {
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
         const res = await fetch(url, {
-          method: "POST",
+          method: "GET",
           headers,
           cache: "no-store",
         });

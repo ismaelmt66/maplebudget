@@ -1082,6 +1082,29 @@ def delete_recurring_transaction(
     return {"ok": True}
 
 
+def _compute_next_date(last_occurrence: str | None, frequency: str) -> str:
+    """Calcule la prochaine date d'occurrence basée sur la dernière occurrence et la fréquence."""
+    _FREQ_DAYS = {
+        "daily": 1,
+        "weekly": 7,
+        "biweekly": 14,
+        "monthly": 30,
+        "quarterly": 91,
+        "yearly": 365,
+    }
+    from datetime import timedelta
+    try:
+        base = dt_date.fromisoformat(last_occurrence) if last_occurrence else dt_date.today()
+    except (ValueError, TypeError):
+        base = dt_date.today()
+    delta = timedelta(days=_FREQ_DAYS.get(frequency, 30))
+    next_dt = base + delta
+    today = dt_date.today()
+    while next_dt < today:
+        next_dt += delta
+    return str(next_dt)
+
+
 @app.post("/recurring-transactions/detect")
 def detect_recurring_transactions(
     db: Session = Depends(get_db),
@@ -1097,17 +1120,17 @@ def detect_recurring_transactions(
     engine = RecurringDetectionEngine(db=db, user_id=current.id)
     patterns = engine.detect_recurring_patterns()
 
-    created = 0
+    created = []
     for p in patterns:
-        if p["confidence_score"] < 0.5:
+        if p.get("confidence_score", 0) < 0.5:
             continue
 
-        # Éviter les doublons : vérifier si ce nom existe déjà
+        # Éviter les doublons : vérifier par nom + fréquence
         existing = db.query(models.RecurringTransaction).filter(
             models.RecurringTransaction.user_id == current.id,
             models.RecurringTransaction.name == p["name"],
+            models.RecurringTransaction.frequency == p["frequency"],
         ).first()
-
         if existing:
             continue
 
@@ -1116,20 +1139,25 @@ def detect_recurring_transactions(
             name=p["name"],
             amount=p["amount"],
             frequency=p["frequency"],
-            next_date=p["next_occurrence"],
-            note=f"Détecté automatiquement (confiance {int(p['confidence_score'] * 100)}%)",
+            next_date=p.get("next_occurrence") or _compute_next_date(
+                p.get("last_occurrence"), p["frequency"]
+            ),
+            note=f"Détecté automatiquement (confiance {int(p.get('confidence_score', 0) * 100)}%)",
             is_active=True,
         )
         db.add(rt)
-        created += 1
+        db.flush()
+        created.append(rt)
 
     db.commit()
+    for rt in created:
+        db.refresh(rt)
 
     all_rts = db.query(models.RecurringTransaction).filter(
         models.RecurringTransaction.user_id == current.id
     ).all()
 
-    return {"detected": created, "patterns": len(patterns), "items": all_rts}
+    return {"detected": len(created), "patterns": len(patterns), "items": all_rts}
 
 
 @app.get("/budget-alerts/summary")

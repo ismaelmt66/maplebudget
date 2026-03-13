@@ -417,7 +417,7 @@ export default function HeaderBar() {
             </Link>
 
             {/* Finances section */}
-            <button onClick={() => setMobileSection(mobileSection === "finances" ? null : "finances")}
+            <button type="button" onClick={() => setMobileSection(mobileSection === "finances" ? null : "finances")}
               className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-white/5 text-white/80 transition-all">
               <span className="flex items-center gap-3"><span className="text-white/40">{I.Finances}</span> Finances</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
@@ -442,7 +442,7 @@ export default function HeaderBar() {
             )}
 
             {/* Patrimoine section */}
-            <button onClick={() => setMobileSection(mobileSection === "patrimoine" ? null : "patrimoine")}
+            <button type="button" onClick={() => setMobileSection(mobileSection === "patrimoine" ? null : "patrimoine")}
               className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-white/5 text-white/80 transition-all">
               <span className="flex items-center gap-3"><span className="text-white/40">{I.Wealth}</span> Patrimoine</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
@@ -465,7 +465,7 @@ export default function HeaderBar() {
             )}
 
             {/* Planification */}
-            <button onClick={() => setMobileSection(mobileSection === "plan" ? null : "plan")}
+            <button type="button" onClick={() => setMobileSection(mobileSection === "plan" ? null : "plan")}
               className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-white/5 text-white/80 transition-all">
               <span className="flex items-center gap-3"><span className="text-white/40">{I.Simulator}</span> Planification</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
@@ -486,7 +486,7 @@ export default function HeaderBar() {
             )}
 
             {/* Insights */}
-            <button onClick={() => setMobileSection(mobileSection === "insights" ? null : "insights")}
+            <button type="button" onClick={() => setMobileSection(mobileSection === "insights" ? null : "insights")}
               className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-white/5 text-white/80 transition-all">
               <span className="flex items-center gap-3"><span className="text-white/40">{I.Insights}</span> Insights</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
@@ -514,7 +514,7 @@ export default function HeaderBar() {
               className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/60 hover:text-white transition-all text-sm">
               <span className="text-white/35">{I.Settings}</span> Paramètres
             </Link>
-            <button onClick={logout}
+            <button type="button" onClick={logout}
               className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-400/80 hover:text-red-400 hover:bg-red-500/10 transition-all text-sm font-medium text-left">
               <span>{I.Logout}</span> Déconnexion
             </button>

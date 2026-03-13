@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getTransactions, downloadTransactionsCSV, Transaction } from "@/lib/api";
+import { getTransactions, Transaction } from "@/lib/api";
 import { money } from "@/lib/format";
+import { useExport } from "@/hooks/useExport";
 
 const DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const MONTHS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
@@ -21,21 +22,7 @@ export default function CalendarPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth()); // 0-indexed
   const [selected, setSelected] = useState<DayData | null>(null);
-  const [exporting, setExporting] = useState(false);
-
-  async function handleExportCSV() {
-    try {
-      setExporting(true);
-      const from = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-      const lastDay = new Date(year, month + 1, 0).getDate();
-      const to = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-      await downloadTransactionsCSV({ from_date: from, to_date: to });
-    } catch {
-      // silently fail — could add a toast here
-    } finally {
-      setExporting(false);
-    }
-  }
+  const { loading: exporting, exportTransactions } = useExport();
 
   useEffect(() => {
     getTransactions()
@@ -100,7 +87,11 @@ export default function CalendarPage() {
           <p className="text-white/50 mt-1 text-sm">Visualise tes dépenses jour par jour.</p>
         </div>
         <button
-          onClick={handleExportCSV}
+          onClick={() => {
+            const firstDay = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+            const lastDay = `${year}-${String(month + 1).padStart(2, "0")}-${new Date(year, month + 1, 0).getDate()}`;
+            exportTransactions("csv", { date_from: firstDay, date_to: lastDay });
+          }}
           disabled={exporting}
           className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white/70 hover:text-white hover:bg-white/10 transition-all disabled:opacity-50"
         >
