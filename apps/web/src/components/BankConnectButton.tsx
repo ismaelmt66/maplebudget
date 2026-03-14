@@ -2,34 +2,25 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { usePlaidLink } from "react-plaid-link";
+import { getToken } from "@/lib/auth";
+import { apiFetch } from "@/lib/api";
 
 export default function BankConnectButton({ onConnectSuccess }: { onConnectSuccess?: () => void }) {
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch Link Token from our FastAPI backend on mount
     useEffect(() => {
         async function createLinkToken() {
             try {
-                const storedToken = localStorage.getItem("token");
-                if (!storedToken) return;
+                const authToken = getToken();
+                if (!authToken) return;
 
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/plaid/create_link_token`, {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${storedToken}`,
-                        "Content-Type": "application/json"
-                    }
-                });
-
-                if (!response.ok) throw new Error("Failed to create link token");
-
-                const data = await response.json();
+                const data = await apiFetch("/plaid/create_link_token", { method: "POST" });
                 setToken(data.link_token);
             } catch (err: unknown) {
                 console.error(err);
-                setError("Impossible d&apos;initialiser Plaid.");
+                setError("Impossible d'initialiser Plaid.");
             }
         }
 
@@ -41,31 +32,15 @@ export default function BankConnectButton({ onConnectSuccess }: { onConnectSucce
         setLoading(true);
         setError(null);
         try {
-            const storedToken = localStorage.getItem("token");
-            
-            // Cast institution to a known type to safely access its properties
             const institution = metadata.institution as Record<string, unknown> | undefined;
             const instName = typeof institution?.name === 'string' ? institution.name : "Générique";
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/plaid/exchange_public_token`, {
+            await apiFetch("/plaid/exchange_public_token", {
                 method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${storedToken}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    public_token,
-                    institution_name: instName
-                })
+                body: JSON.stringify({ public_token, institution_name: instName }),
             });
 
-            if (!response.ok) throw new Error("Échec lors de l'échange du token public.");
-
-            // Trigger API sync right away now that the connection is made
-            await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/plaid/sync_transactions`, {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${storedToken}` }
-            });
+            await apiFetch("/plaid/sync_transactions", { method: "POST" });
 
             if (onConnectSuccess) {
                 onConnectSuccess();
@@ -89,7 +64,7 @@ export default function BankConnectButton({ onConnectSuccess }: { onConnectSucce
         <button
             onClick={() => open()}
             disabled={!ready || !token || loading}
-            title={!ready && !error ? "Initialisation de l'API s\u00e9curis\u00e9e..." : undefined}
+            title={!ready && !error ? "Initialisation de l'API sécurisée..." : undefined}
             className="mb-btn gap-2 disabled:opacity-50"
             style={{ background: "linear-gradient(135deg, #0d9488, #059669)", borderColor: "transparent", boxShadow: "0 4px 20px rgba(16,185,129,0.25)" }}
         >

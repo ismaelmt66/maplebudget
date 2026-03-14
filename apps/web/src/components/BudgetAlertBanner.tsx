@@ -22,7 +22,7 @@ export default function BudgetAlertBanner() {
 
   return (
     <Link
-      href="/budget"
+      href="/finances/budget"
       className={`flex items-center gap-3 px-4 py-3 rounded-2xl border backdrop-blur-md transition-all duration-300 hover:brightness-110 ${
         hasExceeded
           ? "bg-red-500/10 border-red-500/20 text-red-300"

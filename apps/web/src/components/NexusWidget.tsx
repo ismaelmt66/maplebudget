@@ -16,7 +16,7 @@ export default function NexusWidget() {
     // delay visibility check slightly to avoid hydration mismatch and avoid synchronous setState
     const t = setTimeout(() => {
       const token = getToken();
-      setVisible(!!token && pathname !== "/coach");
+      setVisible(!!token && pathname !== "/insights/coach");
     }, 0);
     return () => clearTimeout(t);
   }, [pathname]);
@@ -55,7 +55,7 @@ export default function NexusWidget() {
             </p>
 
             <Link
-              href="/coach"
+              href="/insights/coach"
               className="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
             >
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -78,7 +78,7 @@ export default function NexusWidget() {
           aria-label="Masquer Nexus"
         >✕</button>
 
-        <Link href="/coach" onClick={() => setBubbleOpen(false)}>
+        <Link href="/insights/coach" onClick={() => setBubbleOpen(false)}>
           <div
             className="relative cursor-pointer"
             style={{ animation: "nexusFloat 3s ease-in-out infinite" }}
