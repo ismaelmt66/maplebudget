@@ -4,7 +4,7 @@ Chaque classe correspond à une table ; les relations sont définies pour
 faciliter la navigation entre utilisateurs, catégories, transactions et objectifs.
 """
 
-from sqlalchemy import String, ForeignKey, Numeric
+from sqlalchemy import Index, String, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db import Base
@@ -66,9 +66,14 @@ class Transaction(Base):
     bank_connection_id: Mapped[int | None] = mapped_column(ForeignKey("bank_connections.id"), nullable=True)
     bank_connection: Mapped["BankConnection | None"] = relationship(back_populates="transactions")
 
-    # Champs pour les transactions récurrentes
     is_recurring: Mapped[bool] = mapped_column(default=False)
-    recurrence_interval: Mapped[str | None] = mapped_column(String(16), nullable=True)  # 'daily'|'weekly'|'monthly'|'yearly'
+    recurrence_interval: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
+    __table_args__ = (
+        Index("ix_transactions_user_date", "user_id", "date"),
+        Index("ix_transactions_user_category_date", "user_id", "category_id", "date"),
+        Index("ix_transactions_bank_conn", "bank_connection_id"),
+    )
 
 
 # --- Goals ---
@@ -127,7 +132,7 @@ class AllocationRule(Base):
 
 
 class BankConnection(Base):
-    """Connexion bancaire via Plaid ou autre."""
+    """Connexion bancaire via Plaid ou autre fournisseur."""
     __tablename__ = "bank_connections"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -135,6 +140,8 @@ class BankConnection(Base):
     access_token: Mapped[str] = mapped_column(String(255))
     item_id: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     cursor: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provider: Mapped[str] = mapped_column(String(32), default="plaid")
+    last_synced_at: Mapped[str | None] = mapped_column(String(30), nullable=True)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped["User"] = relationship(back_populates="bank_connections")
