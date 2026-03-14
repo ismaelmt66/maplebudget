@@ -7,18 +7,19 @@ and core auth flow (register + login + me) works end-to-end.
 import os
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-ci")
-os.environ.setdefault("DATABASE_URL", "sqlite:///./test_app.db")
+os.environ.setdefault("DATABASE_URL", "sqlite:///./test_nexledger.db")
 
 import pytest
 from fastapi.testclient import TestClient
 
-from main import app
+from main import app, _rate_limit_store
 from db import Base, engine
 
 
 @pytest.fixture(autouse=True)
 def setup_db():
     """Create all tables before each test and drop them after."""
+    _rate_limit_store.clear()
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)

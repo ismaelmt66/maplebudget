@@ -17,9 +17,16 @@ class UserCreate(BaseModel):
 class UserOut(BaseModel):
     id: int
     email: EmailStr
+    role: str = "user"
+    is_active: bool = True
 
     class Config:
         from_attributes = True
+
+
+class AdminUserUpdate(BaseModel):
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 class TokenOut(BaseModel):

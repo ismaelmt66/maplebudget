@@ -18,6 +18,8 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
     totp_enabled: Mapped[bool] = mapped_column(default=False)
+    role: Mapped[str] = mapped_column(String(16), default="user")  # 'user' | 'admin'
+    is_active: Mapped[bool] = mapped_column(default=True)
 
     # New onboarding fields
     name: Mapped[str | None] = mapped_column(String(100), nullable=True)

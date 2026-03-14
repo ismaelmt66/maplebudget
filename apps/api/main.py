@@ -193,6 +193,9 @@ from routers import social as social_router
 from routers import canada as canada_router
 from routers import subscriptions as subscriptions_router
 from routers import bank as bank_router
+from routers import admin as admin_router
+from routers import imports as imports_router
+from routers import gamification as gamification_router
 
 app.include_router(auth_router.router)
 app.include_router(categories_router.router)
@@ -208,3 +211,6 @@ app.include_router(social_router.router)
 app.include_router(canada_router.router)
 app.include_router(bank_router.router)
 app.include_router(subscriptions_router.router, prefix="/analytics")
+app.include_router(admin_router.router)
+app.include_router(imports_router.router)
+app.include_router(gamification_router.router)

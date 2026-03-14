@@ -113,4 +113,21 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated",
+        )
     return user
+
+
+def require_admin(
+    current: models.User = Depends(get_current_user),
+) -> models.User:
+    """Dependency that ensures the current user has admin role."""
+    if current.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    return current

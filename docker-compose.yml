@@ -10,6 +10,37 @@ services:
       - "5432:5432"
     volumes:
       - nexledger_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexledger"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./apps/api
+    container_name: nexledger_api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://nexledger:nexledger@db:5432/nexledger
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      DEBUG: "true"
+      CORS_ORIGINS: '["http://localhost:3000"]'
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./apps/api:/app
+
+  web:
+    build: ./apps/web
+    container_name: nexledger_web
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE: http://localhost:8000
+    depends_on:
+      - api
 
 volumes:
   nexledger_db_data:

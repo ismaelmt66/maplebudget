@@ -236,13 +236,14 @@ def _compute_savings_streak(db: Session, user_id: int, today: dt_date) -> int:
         m_start = check_date
         m_end = m_start.replace(month=m_start.month + 1) if m_start.month < 12 else m_start.replace(year=m_start.year + 1, month=1)
 
+        from sqlalchemy import case as sa_case
         row = (
             db.query(
                 func.coalesce(func.sum(
-                    func.case((models.Category.type == "income", models.Transaction.amount), else_=0)
+                    sa_case((models.Category.type == "income", models.Transaction.amount), else_=0)
                 ), 0).label("income"),
                 func.coalesce(func.sum(
-                    func.case((models.Category.type == "expense", models.Transaction.amount), else_=0)
+                    sa_case((models.Category.type == "expense", models.Transaction.amount), else_=0)
                 ), 0).label("expense"),
             )
             .join(models.Category, models.Transaction.category_id == models.Category.id)
