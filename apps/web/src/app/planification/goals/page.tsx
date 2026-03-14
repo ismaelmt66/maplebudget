@@ -121,10 +121,10 @@ export default function GoalsPage(): React.JSX.Element {
   }
 
   return (
-    <main className="space-y-10 pb-16">
+    <main className="mb-container space-y-6 pb-12">
       <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between animate-fade-in-up">
         <div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mt-3">Objectifs</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mt-3">Objectifs</h1>
           <p className="text-sm opacity-70 mt-3">Dépôts réguliers et suivi de la progression globale.</p>
         </div>
       </section>

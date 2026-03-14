@@ -2,11 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiError, Achievement, getAchievements } from "@/lib/api";
+import { ApiError, Achievement, apiFetch } from "@/lib/api";
+
+type AchievementsResponse = {
+    achievements: Achievement[];
+    xp: number;
+    level: string;
+    level_progress: number;
+};
+
+const LEVEL_CONFIG: Record<string, { min: number; max: number; color: string; gradient: string }> = {
+    "Débutant": { min: 0, max: 200, color: "text-zinc-400", gradient: "from-zinc-500 to-zinc-300" },
+    "Apprenti": { min: 200, max: 400, color: "text-blue-400", gradient: "from-blue-500 to-cyan-300" },
+    "Expert": { min: 400, max: 700, color: "text-purple-400", gradient: "from-purple-500 to-pink-300" },
+    "Maître": { min: 700, max: 1000, color: "text-amber-400", gradient: "from-amber-500 to-yellow-300" },
+    "Gourou": { min: 1000, max: 1200, color: "text-emerald-400", gradient: "from-emerald-500 to-green-300" },
+};
 
 export default function AchievementsPage() {
     const router = useRouter();
     const [achievements, setAchievements] = useState<Achievement[]>([]);
+    const [xp, setXp] = useState(0);
+    const [level, setLevel] = useState("Débutant");
+    const [levelProgress, setLevelProgress] = useState(0);
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
 
@@ -15,8 +33,11 @@ export default function AchievementsPage() {
             try {
                 setLoading(true);
                 setErr(null);
-                const data = await getAchievements();
-                setAchievements(data);
+                const data = await apiFetch("/achievements") as AchievementsResponse;
+                setAchievements(data.achievements);
+                setXp(data.xp);
+                setLevel(data.level);
+                setLevelProgress(data.level_progress);
             } catch (e: unknown) {
                 if (e instanceof ApiError && e.status === 401) {
                     router.push("/login");
@@ -34,11 +55,13 @@ export default function AchievementsPage() {
     const totalCount = achievements.length;
     const progress = totalCount > 0 ? (unlockedCount / totalCount) * 100 : 0;
 
+    const lvlConfig = LEVEL_CONFIG[level] ?? LEVEL_CONFIG["Débutant"];
+
     return (
-        <main className="max-w-5xl mx-auto space-y-10 pb-16">
+        <main className="max-w-5xl mx-auto px-4 space-y-6 pb-12">
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-fade-in-up">
                 <div>
-                    <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Trophées</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Trophées</h1>
                     <p className="text-sm opacity-70 mt-3">
                         Accomplis des objectifs financiers pour débloquer des badges exclusifs.
                     </p>
@@ -52,6 +75,54 @@ export default function AchievementsPage() {
                     </div>
                 )}
             </header>
+
+            {/* Level + XP Card */}
+            {!loading && (
+                <div className="animate-fade-in-up delay-100">
+                    <div className="relative overflow-hidden rounded-[2rem] p-8 bg-black/40 border border-white/10 backdrop-blur-xl">
+                        <div className="absolute top-0 right-0 -mt-16 -mr-16 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+                        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-6">
+                            {/* Level Badge */}
+                            <div className="flex items-center gap-4">
+                                <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${lvlConfig.gradient} flex items-center justify-center shadow-lg`}>
+                                    <span className="text-2xl font-black text-white drop-shadow-md">
+                                        {level === "Gourou" ? "💎" : level === "Maître" ? "★" : level === "Expert" ? "◆" : level === "Apprenti" ? "▲" : "●"}
+                                    </span>
+                                </div>
+                                <div>
+                                    <div className="text-xs uppercase tracking-widest opacity-60 font-bold">Niveau</div>
+                                    <div className={`text-2xl font-black ${lvlConfig.color}`}>{level}</div>
+                                </div>
+                            </div>
+
+                            {/* XP Bar */}
+                            <div className="flex-1">
+                                <div className="flex justify-between items-baseline mb-2">
+                                    <span className="text-sm font-bold opacity-80">{xp} XP</span>
+                                    <span className="text-xs opacity-50">
+                                        {level === "Gourou"
+                                            ? "Niveau maximum atteint !"
+                                            : `${lvlConfig.max - xp} XP pour le prochain niveau`}
+                                    </span>
+                                </div>
+                                <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden relative shadow-inner">
+                                    <div
+                                        className={`h-full bg-gradient-to-r ${lvlConfig.gradient} transition-all duration-1000 ease-out rounded-full`}
+                                        style={{
+                                            width: `${Math.max(levelProgress * 100, 2)}%`,
+                                            boxShadow: `0 0 15px rgba(251,191,36,0.3)`,
+                                        }}
+                                    />
+                                </div>
+                                <div className="flex justify-between text-xs opacity-40 mt-1.5 font-mono">
+                                    <span>{lvlConfig.min} XP</span>
+                                    <span>{level === "Gourou" ? "∞" : `${lvlConfig.max} XP`}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Global Progress Bar */}
             {!loading && (

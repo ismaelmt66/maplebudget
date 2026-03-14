@@ -473,25 +473,17 @@ export default function AssetsPage() {
     // ─── AI Analysis ──────────────────────────────────────────────────────────
     const handleAIAnalysis = loadAIAnalysis;
 
-    // Auto-trigger AI analysis when the meaningful composition of assets changes.
-    // Using count + rounded total balance as a fingerprint avoids spurious re-runs
-    // caused by reference changes while the actual data stays the same.
-    const assetFingerprint = assets.length > 0
-        ? `${assets.length}:${Math.round(assets.reduce((s, a) => s + a.balance, 0))}`
-        : "";
-    useEffect(() => {
-        if (!assetFingerprint) return;
-        const timer = setTimeout(() => { handleAIAnalysis(); }, 800);
-        return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [assetFingerprint]);
+    // The backend now uses a cache that is invalidated on data changes,
+    // so we no longer need the complex frontend fingerprint to trigger re-analysis.
+    // The analysis will be triggered once when the tab is opened, and the backend
+    // will provide a fresh report if the data has changed.
 
     const typeLabel: Record<string, string> = { checking: "Compte Courant", savings: "Épargne", stock: "Bourse", crypto: "Crypto", liability: "Dette", real_estate: "Immobilier" };
     const typeGradient: Record<string, string> = { checking: "from-blue-500/20 to-blue-900/10 border-blue-500/20", savings: "from-emerald-500/20 to-emerald-900/10 border-emerald-500/20", stock: "from-purple-500/20 to-purple-900/10 border-purple-500/20", crypto: "from-orange-500/20 to-orange-900/10 border-orange-500/20", liability: "from-red-500/20 to-red-900/10 border-red-500/20", real_estate: "from-cyan-500/20 to-cyan-900/10 border-cyan-500/20" };
     const incomeCategories = categories.filter(c => c.type === "income");
 
     return (
-        <main suppressHydrationWarning className="max-w-7xl mx-auto space-y-10 pb-16 px-4">
+        <main suppressHydrationWarning className="max-w-7xl mx-auto space-y-6 pb-12 px-4">
 
             {/* ── Hero Header ───────────────────────────────── */}
             <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 animate-fade-in-up pt-4">
@@ -500,12 +492,12 @@ export default function AssetsPage() {
                         <span className="text-xs font-bold uppercase tracking-widest text-emerald-400 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">Patrimoine</span>
                         <span className="text-xs text-white/40">{assets.length} actif(s)</span>
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-black tracking-tight">Votre Richesse</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Votre Richesse</h1>
                     <p className="text-sm text-white/50 mt-2">Gérez, automatisez et optimisez votre patrimoine avec l&apos;IA.</p>
                 </div>
                 <div className="text-right">
                     <div className="text-xs uppercase tracking-widest text-white/40 font-bold mb-1">Net Worth</div>
-                    <div className={`text-4xl md:text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r ${kpis.netWorth >= 0 ? "from-emerald-400 to-teal-200" : "from-red-400 to-rose-200"}`}>
+                    <div className={`text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${kpis.netWorth >= 0 ? "from-emerald-400 to-teal-200" : "from-red-400 to-rose-200"}`}>
                         {money(kpis.netWorth)}
                     </div>
                 </div>

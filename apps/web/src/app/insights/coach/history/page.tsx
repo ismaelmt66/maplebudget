@@ -45,12 +45,12 @@ export default function CoachHistoryPage() {
   }
 
   return (
-    <main className="max-w-4xl mx-auto pb-16 space-y-8">
+    <main className="max-w-4xl mx-auto px-4 pb-16 space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 animate-fade-in-up">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <Link href="/coach" className="text-sm text-white/50 hover:text-white transition-colors flex items-center gap-1">
+            <Link href="/insights/coach" className="text-sm text-white/50 hover:text-white transition-colors flex items-center gap-1">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M19 12H5M12 5l-7 7 7 7" />
               </svg>
@@ -92,7 +92,7 @@ export default function CoachHistoryPage() {
           <p className="text-sm opacity-40 mt-2 max-w-sm mx-auto">
             Les conversations avec {AI_NAME} sont archivées automatiquement à la déconnexion.
           </p>
-          <Link href="/coach" className="mt-6 mb-btn mb-btn-primary inline-flex gap-2">
+          <Link href="/insights/coach" className="mt-6 mb-btn mb-btn-primary inline-flex gap-2">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>

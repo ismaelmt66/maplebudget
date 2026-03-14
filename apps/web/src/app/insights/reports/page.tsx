@@ -76,9 +76,9 @@ export default function AnalyticsPage() {
     }, [monthlyData]);
 
     return (
-        <main className="max-w-5xl mx-auto space-y-10 pb-16">
+        <main className="max-w-5xl mx-auto px-4 space-y-6 pb-12">
             <header className="animate-fade-in-up">
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Analytique</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Analytique</h1>
                 <p className="text-sm opacity-70 mt-3">
                     Analyse tes flux de trésorerie sur le long terme. Suis ta progression mois par mois.
                 </p>

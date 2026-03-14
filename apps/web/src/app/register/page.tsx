@@ -15,6 +15,20 @@ export default function RegisterPage() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const passwordStrength = (() => {
+    if (!password) return { score: 0, label: "", color: "" };
+    let score = 0;
+    if (password.length >= 6) score++;
+    if (password.length >= 10) score++;
+    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    if (score <= 1) return { score, label: "Faible", color: "bg-red-500" };
+    if (score <= 2) return { score, label: "Moyen", color: "bg-amber-500" };
+    if (score <= 3) return { score, label: "Bon", color: "bg-emerald-500" };
+    return { score, label: "Excellent", color: "bg-emerald-400" };
+  })();
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (password !== password2) return setErr("Les mots de passe ne correspondent pas.");
@@ -26,7 +40,7 @@ export default function RegisterPage() {
       await registerUser({ email, password });
       const res = await loginUser({ email, password });
       setToken(res.access_token);
-      r.push("/dashboard");
+      r.push("/onboarding");
     } catch (e: unknown) {
       setErr((e as Error)?.message ?? "Erreur");
     } finally {
@@ -109,6 +123,19 @@ export default function RegisterPage() {
                   />
                 </div>
               </label>
+
+              {password && (
+                <div className="space-y-1.5">
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <div key={i} className={`h-1 flex-1 rounded-full transition-all ${i <= passwordStrength.score ? passwordStrength.color : "bg-white/10"}`} />
+                    ))}
+                  </div>
+                  <div className={`text-xs ${passwordStrength.score <= 1 ? "text-red-400" : passwordStrength.score <= 2 ? "text-amber-400" : "text-emerald-400"}`}>
+                    {passwordStrength.label}
+                  </div>
+                </div>
+              )}
 
               <label className="block text-sm font-medium text-white/80">
                 Confirmer le mot de passe

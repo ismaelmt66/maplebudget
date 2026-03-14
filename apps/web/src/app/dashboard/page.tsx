@@ -74,10 +74,10 @@ function KPI({
           : { borderColor: "rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)", boxShadow: "0 0 30px rgba(255,255,255,0.02)" };
 
   return (
-    <div className="rounded-3xl p-6 relative overflow-hidden backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:brightness-110" style={toneStyle as React.CSSProperties}>
-      <div className="text-sm opacity-70 font-medium tracking-wide uppercase">{label}</div>
-      <div className="text-3xl font-bold mt-2 tracking-tight">{value}</div>
-      {hint && <div className="text-xs opacity-60 mt-3">{hint}</div>}
+    <div className="rounded-2xl p-5 relative overflow-hidden border transition-all duration-200" style={toneStyle as React.CSSProperties}>
+      <div className="text-xs text-white/50 font-medium tracking-wide uppercase">{label}</div>
+      <div className="text-2xl font-bold mt-1.5 tracking-tight">{value}</div>
+      {hint && <div className="text-xs text-white/40 mt-2">{hint}</div>}
     </div>
   );
 }
@@ -691,33 +691,22 @@ export default function DashboardPage(): React.JSX.Element {
 
 
   return (
-    <main className="space-y-10 pb-16">
+    <main className="mb-container space-y-6 pb-16">
 
-      {/* Hero Header */}
-      <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between animate-fade-in-up">
+      {/* Header */}
+      <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between animate-fade-in-up">
         <div>
-          <div className="flex flex-wrap gap-2">
-            <span className="mb-badge bg-blue-500/10 border-blue-500/20 text-blue-300">Dashboard</span>
-            <span className="mb-badge">Signal: {signal.label}</span>
-            <span className="mb-badge">{fromDate && toDate ? `${fromDate} → ${toDate}` : "Toutes dates"}</span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mt-4">Vue rapide</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-white/50 mt-1">{fromDate && toDate ? `${fromDate} \u2192 ${toDate}` : "Toutes les periodes"}</p>
         </div>
-
-        <div className="flex flex-wrap gap-3">
-          <BankConnectButton onConnectSuccess={loadAll} />
+        <div className="flex flex-wrap gap-2">
           <button className="mb-btn gap-2" onClick={loadAll} disabled={loading}>
             <svg className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            {loading ? "Chargement…" : "Rafraîchir"}
+            {loading ? "..." : "Actualiser"}
           </button>
-          <Link className="mb-btn mb-btn-primary gap-2" href="/transactions">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            Gérer transactions
-          </Link>
+          <BankConnectButton onConnectSuccess={loadAll} />
         </div>
       </section>
 
