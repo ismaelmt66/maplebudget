@@ -69,29 +69,66 @@ body {
 
 /* Container */
 .mb-container {
-  max-width: 1180px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 26px;
+  padding: 1.25rem 1rem;
 }
 
 @media (min-width: 768px) {
   .mb-container {
-    padding: 34px;
+    padding: 1.5rem 2rem;
   }
 }
 
-/* Card (premium, stable) */
+@media (min-width: 1024px) {
+  .mb-container {
+    padding: 1.75rem 2.5rem;
+  }
+}
+
+/* Card (clean SaaS) */
 .mb-card {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 22px;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .mb-card-soft {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+/* Page layout utility */
+.mb-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+@media (min-width: 768px) {
+  .mb-page {
+    padding: 2.5rem 1.5rem;
+    gap: 2rem;
+  }
+}
+
+/* Section spacing */
+.mb-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Divider */
+.mb-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 0.5rem 0;
 }
 
 /* Soft lift (hover only) */
@@ -413,4 +450,66 @@ select:focus {
 /* Missing delay utilities */
 .delay-150 {
   animation-delay: 150ms;
+}
+
+/* ============================
+   Typography improvements
+   ============================ */
+.mb-heading-lg {
+  font-size: 1.875rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.mb-heading-md {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: #fff;
+}
+
+.mb-heading-sm {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.mb-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Focus ring for keyboard navigation */
+.mb-focus-ring:focus-visible {
+  outline: 2px solid rgba(var(--mb-ring), 0.6);
+  outline-offset: 2px;
+}
+
+/* Smooth page transitions */
+@media (prefers-reduced-motion: no-preference) {
+  .animate-fade-in {
+    opacity: 0;
+    animation: fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Gradient text utility */
+.mb-gradient-text {
+  background: linear-gradient(135deg, #a78bfa, #818cf8, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

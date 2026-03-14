@@ -30,12 +30,10 @@ _settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup / shutdown hook.  Creates tables from ORM metadata when
-    running against SQLite in development (no Alembic needed locally).
-    In production, Alembic handles migrations."""
     if _settings.is_sqlite:
         from db import engine, Base
-        import models  # noqa: F401 — ensure all models are registered
+        import models  # noqa: F401
+        import analytics.models  # noqa: F401
         Base.metadata.create_all(bind=engine)
         logger.info("SQLite dev mode — tables synced from ORM metadata")
     else:
@@ -81,7 +79,6 @@ _rate_limit_store: dict[str, list[float]] = defaultdict(list)
 _AUTH_PATHS = {"/auth/token", "/auth/register"}
 
 def _parse_rate(rate_str: str) -> tuple[int, int]:
-    """Parse '10/minute' into (10, 60)."""
     count, period = rate_str.split("/")
     periods = {"second": 1, "minute": 60, "hour": 3600}
     return int(count), periods.get(period, 60)
@@ -175,9 +172,9 @@ async def readyz():
 # ── Background job status ─────────────────────────────────────────────
 
 @app.get("/jobs/{job_id}", tags=["ops"])
-async def job_status(job_id: str):
-    from services.background import get_job_status
-    return get_job_status(job_id)
+async def job_status_endpoint(job_id: str):
+    from workers.queue import get_job
+    return get_job(job_id)
 
 
 # ── Routers ──────────────────────────────────────────────────────────
@@ -195,6 +192,7 @@ from routers import insights as insights_router
 from routers import social as social_router
 from routers import canada as canada_router
 from routers import subscriptions as subscriptions_router
+from routers import bank as bank_router
 
 app.include_router(auth_router.router)
 app.include_router(categories_router.router)
@@ -208,4 +206,5 @@ app.include_router(health_router.router)
 app.include_router(insights_router.router)
 app.include_router(social_router.router)
 app.include_router(canada_router.router)
+app.include_router(bank_router.router)
 app.include_router(subscriptions_router.router, prefix="/analytics")
