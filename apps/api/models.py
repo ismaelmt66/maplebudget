@@ -19,6 +19,14 @@ class User(Base):
     totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
     totp_enabled: Mapped[bool] = mapped_column(default=False)
 
+    # New onboarding fields
+    name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    currency: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    income_level: Mapped[str | None] = mapped_column(String(50), nullable=True) # e.g. "0-50k", "50k-100k"
+    financial_knowledge: Mapped[str | None] = mapped_column(String(50), nullable=True) # e.g. "beginner", "intermediate"
+    risk_tolerance: Mapped[str | None] = mapped_column(String(50), nullable=True) # e.g. "low", "medium", "high"
+    
     categories: Mapped[list["Category"]] = relationship(back_populates="user")
     transactions: Mapped[list["Transaction"]] = relationship(back_populates="user")
     goals: Mapped[list["Goal"]] = relationship(back_populates="user")

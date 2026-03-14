@@ -115,7 +115,7 @@ class RecurringDetectionEngine:
         ce qui permet de regrouper des transactions similaires même si le montant
         varie légèrement (ex: 14.99, 15.00, 15.49 → même groupe).
         """
-        note = (tx.note or "").strip().lower()
+        name = self._clean_name(tx.note or "")
         amount = float(tx.amount)
         # Use percentage-based bucketing: round to nearest 10% step
         if amount <= 0:
@@ -123,17 +123,34 @@ class RecurringDetectionEngine:
         else:
             step = max(1.0, amount * 0.10)  # 10% tolerance step, minimum 1.0
             bucket = round(round(amount / step) * step, 2)
-        return f"{note}|{bucket}"
+        return f"{name}|{bucket}"
+
+    def _clean_name(self, name: str) -> str:
+        """Nettoie et normalise le nom d'une transaction pour le regroupement."""
+        import re
+        name = name.lower().strip()
+        # Remove UUIDs or long alphanumeric codes
+        name = re.sub(r'\b[a-f0-9-]{8,}\b', ' ', name)
+        # Remove noise words
+        noise_pattern = r'\b(payment to|payment|debit|purchase|card|tkn|transaction|pre-authorized|withdrawal|charges|invoice|online)\b'
+        name = re.sub(noise_pattern, '', name, flags=re.IGNORECASE)
+        # Remove characters that are often noise separators, but keep . for domains
+        name = re.sub(r'[\*_#\d]', ' ', name)
+        # Consolidate whitespace
+        name = re.sub(r'\s+', ' ', name).strip()
+        return name
 
     def _group_name(self, txs: list[models.Transaction]) -> str:
         """Choisit le meilleur nom pour le groupe."""
-        notes = [t.note for t in txs if t.note and t.note.strip()]
-        if notes:
-            # Retourner la note la plus fréquente
-            return max(set(notes), key=notes.count)
-        if txs and txs[0].category:
-            return txs[0].category.name
-        return "Transaction récurrente"
+        notes = [self._clean_name(t.note) for t in txs if t.note and self._clean_name(t.note)]
+        if not notes:
+            if txs and txs[0].category:
+                return f"Dépense: {txs[0].category.name}"
+            return "Transaction récurrente"
+
+        # Find the most common non-empty cleaned note
+        most_common = max(set(notes), key=notes.count)
+        return most_common.title()
 
     def _determine_frequency(self, avg_interval: float) -> Optional[str]:
         """Détermine la fréquence à partir de l'intervalle moyen en jours."""
