@@ -1,27 +1,28 @@
 /**
  * Authentication utilities: token storage and retrieval.
  */
-const KEY = "nexledger_token";
+const ACCESS_KEY = "nexledger_token";
+const REFRESH_KEY = "nexledger_refresh_token";
 
-/**
- * Retrieve the JWT token from local storage.
- * Returns null if not found or if running on the server.
- */
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(KEY);
+  return localStorage.getItem(ACCESS_KEY);
 }
 
-/**
- * Store the JWT token in local storage.
- */
 export function setToken(token: string) {
-  localStorage.setItem(KEY, token);
+  localStorage.setItem(ACCESS_KEY, token);
 }
 
-/**
- * Remove the JWT token from local storage.
- */
+export function getRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(REFRESH_KEY);
+}
+
+export function setRefreshToken(token: string) {
+  localStorage.setItem(REFRESH_KEY, token);
+}
+
 export function clearToken() {
-  localStorage.removeItem(KEY);
+  localStorage.removeItem(ACCESS_KEY);
+  localStorage.removeItem(REFRESH_KEY);
 }

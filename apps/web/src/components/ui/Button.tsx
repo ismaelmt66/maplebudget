@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn";
  * Extends standard HTML button attributes.
  */
 type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "ghost" | "danger";
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "outline";
   size?: "sm" | "md" | "lg";
 };
 
@@ -44,6 +44,8 @@ export function Button({
       "bg-transparent hover:bg-black/[0.04] border border-transparent hover:border-black/10",
     danger:
       "text-white bg-[rgb(var(--danger))] hover:brightness-[1.03] border border-white/10",
+    outline:
+      "bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10",
   }[variant];
 
   return <button className={cn(base, sizes, styles, className)} {...props} />;

@@ -35,14 +35,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ToastProvider>
           <HeaderBar />
-
-          <div className="mb-container">
+          <main className="min-h-[calc(100vh-56px)]">
             {children}
-
-            <footer className="mt-14 text-xs opacity-60">
-              NexLedger - portfolio FinTech (educational). Next.js + FastAPI.
-            </footer>
-          </div>
+          </main>
           <NexusWidget />
         </ToastProvider>
       </body>

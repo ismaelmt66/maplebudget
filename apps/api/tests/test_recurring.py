@@ -21,7 +21,8 @@ from sqlalchemy.pool import StaticPool
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from db import Base, get_db  # noqa: E402
-from main import app, get_current_user  # noqa: E402
+from main import app  # noqa: E402
+from auth import get_current_user  # noqa: E402
 import models  # noqa: E402, F401 — ensures all ORM models are registered
 from services.recurring_detection import RecurringDetectionEngine  # noqa: E402
 
@@ -142,6 +143,21 @@ def test_detect_no_pattern_outside_ranges():
     result = engine.detect_recurring_patterns()
     assert isinstance(result, list)
     assert len(result) == 0
+
+
+def test_detect_monthly_pattern_with_dirty_names():
+    """Should detect a monthly pattern even with variations in the transaction name."""
+    txs = [
+        make_tx(tx_id=1, amount=15.0, tx_date="2024-01-01", note="Netflix"),
+        make_tx(tx_id=2, amount=15.0, tx_date="2024-02-01", note="netflix.com"),
+        make_tx(tx_id=3, amount=15.0, tx_date="2024-03-01", note="NETFLIX CA"),
+        make_tx(tx_id=4, amount=15.0, tx_date="2024-04-01", note="Payment to Netflix.com 800-123-4567"),
+    ]
+    engine = make_engine(txs)
+    patterns = engine.detect_recurring_patterns()
+    assert len(patterns) == 1, "Should detect one pattern"
+    assert patterns[0]["frequency"] == "monthly"
+    assert "Netflix" in patterns[0]["name"]
 
 
 # ---------------------------------------------------------------------------
@@ -301,28 +317,38 @@ def client(test_db):
     app.dependency_overrides.clear()
 
 
-def test_create_recurring_transaction(client):
+def _create_category(db_session):
+    cat = models.Category(user_id=1, name="Abonnements", type="expense")
+    db_session.add(cat)
+    db_session.commit()
+    db_session.refresh(cat)
+    return cat.id
+
+
+def test_create_recurring_transaction(client, test_db):
     """Should create a recurring transaction manually."""
+    cat_id = _create_category(test_db)
     payload = {
         "name": "Netflix",
         "amount": 14.99,
         "frequency": "monthly",
         "next_date": "2024-02-01",
+        "category_id": cat_id,
     }
     resp = client.post("/recurring-transactions", json=payload)
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     data = resp.json()
     assert data["name"] == "Netflix"
     assert data["frequency"] == "monthly"
     assert data["is_active"] is True
 
 
-def test_list_recurring_transactions(client):
+def test_list_recurring_transactions(client, test_db):
     """Should list all recurring transactions for the user."""
-    # Create a recurring transaction first
+    cat_id = _create_category(test_db)
     client.post(
         "/recurring-transactions",
-        json={"name": "Spotify", "amount": 9.99, "frequency": "monthly"},
+        json={"name": "Spotify", "amount": 9.99, "frequency": "monthly", "next_date": "2024-02-01", "category_id": cat_id},
     )
     resp = client.get("/recurring-transactions")
     assert resp.status_code == 200
@@ -331,11 +357,12 @@ def test_list_recurring_transactions(client):
     assert data[0]["name"] == "Spotify"
 
 
-def test_update_recurring_status_pause(client):
+def test_update_recurring_status_pause(client, test_db):
     """Should pause a recurring transaction."""
+    cat_id = _create_category(test_db)
     create_resp = client.post(
         "/recurring-transactions",
-        json={"name": "Amazon Prime", "amount": 6.99, "frequency": "monthly"},
+        json={"name": "Amazon Prime", "amount": 6.99, "frequency": "monthly", "next_date": "2024-02-01", "category_id": cat_id},
     )
     rt_id = create_resp.json()["id"]
 
@@ -344,11 +371,12 @@ def test_update_recurring_status_pause(client):
     assert resp.json()["is_active"] is False
 
 
-def test_update_recurring_status_resume(client):
+def test_update_recurring_status_resume(client, test_db):
     """Should resume a paused recurring transaction."""
+    cat_id = _create_category(test_db)
     create_resp = client.post(
         "/recurring-transactions",
-        json={"name": "Disney+", "amount": 8.99, "frequency": "monthly"},
+        json={"name": "Disney+", "amount": 8.99, "frequency": "monthly", "next_date": "2024-02-01", "category_id": cat_id},
     )
     rt_id = create_resp.json()["id"]
 
@@ -358,11 +386,12 @@ def test_update_recurring_status_resume(client):
     assert resp.json()["is_active"] is True
 
 
-def test_delete_recurring_transaction(client):
+def test_delete_recurring_transaction(client, test_db):
     """Should delete a recurring transaction."""
+    cat_id = _create_category(test_db)
     create_resp = client.post(
         "/recurring-transactions",
-        json={"name": "Old Subscription", "amount": 5.0, "frequency": "monthly"},
+        json={"name": "Old Subscription", "amount": 5.0, "frequency": "monthly", "next_date": "2024-02-01", "category_id": cat_id},
     )
     rt_id = create_resp.json()["id"]
 
@@ -370,7 +399,6 @@ def test_delete_recurring_transaction(client):
     assert resp.status_code == 200
     assert resp.json()["ok"] is True
 
-    # Verify it's gone
     list_resp = client.get("/recurring-transactions")
     ids = [item["id"] for item in list_resp.json()]
     assert rt_id not in ids
@@ -380,4 +408,4 @@ def test_detect_recurring_endpoint_empty(client):
     """Detect endpoint should return an empty list when there are no transactions."""
     resp = client.post("/recurring-transactions/detect")
     assert resp.status_code == 200
-    assert resp.json() == []
+    assert resp.json() == {"detected": 0, "patterns": 0, "items": []}

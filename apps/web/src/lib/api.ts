@@ -4,10 +4,8 @@
  */
 import { getToken } from "@/lib/auth";
 
-let API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
-if (typeof window !== "undefined") {
-  API_BASE = `http://${window.location.hostname}:8000`;
-}
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE
+  ?? (typeof window !== "undefined" ? `http://${window.location.hostname}:8000` : "http://localhost:8000");
 
 /** Custom error class representing an HTTP error from the API */
 export class ApiError extends Error {
@@ -88,8 +86,15 @@ export async function registerUser(payload: { email: string; password: string })
   }) as Promise<User>;
 }
 
+export type LoginResponse = {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  mfa_required: boolean;
+};
+
 // OAuth2PasswordRequestForm => x-www-form-urlencoded
-export async function loginUser(payload: { email: string; password: string }): Promise<{ access_token: string; token_type: string }> {
+export async function loginUser(payload: { email: string; password: string }): Promise<LoginResponse> {
   const body = new URLSearchParams();
   body.set("username", payload.email);
   body.set("password", payload.password);
@@ -108,6 +113,20 @@ export async function loginUser(payload: { email: string; password: string }): P
   }
 
   return res.json();
+}
+
+export async function refreshAccessToken(refresh_token: string): Promise<LoginResponse> {
+  return apiFetch("/auth/refresh", {
+    method: "POST",
+    body: JSON.stringify({ refresh_token }),
+  }) as Promise<LoginResponse>;
+}
+
+export async function mfaVerify(payload: { email: string; password: string; totp_code: string }): Promise<LoginResponse> {
+  return apiFetch("/auth/mfa/verify", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }) as Promise<LoginResponse>;
 }
 
 export async function me(): Promise<User> {
@@ -592,30 +611,7 @@ export type BudgetAlertResponse = {
 };
 
 export async function getBudgetAlertsFull(): Promise<BudgetAlertResponse> {
-  const [alerts, checks] = await Promise.all([
-    apiFetch("/budget-alerts") as Promise<BudgetAlert[]>,
-    apiFetch("/budget-alerts/check") as Promise<BudgetAlertCheck[]>,
-  ]);
-  const checkMap = new Map(checks.map(c => [c.category_id, c]));
-  const enriched = alerts.map(a => {
-    const c = checkMap.get(a.category_id);
-    const pct = c?.percentage ?? 0;
-    const spent = c?.current_spending ?? 0;
-    const limit = a.monthly_limit;
-    const remaining = limit - spent;
-    const status: "safe" | "warning" | "danger" | "exceeded" =
-      pct >= 100 ? "exceeded" : pct >= 90 ? "danger" : pct >= 75 ? "warning" : "safe";
-    return { ...a, status, percentage: pct, spent, budget_limit: limit, remaining };
-  });
-  const over = enriched.filter(a => a.status === "exceeded").length;
-  const warning = enriched.filter(a => a.status === "warning" || a.status === "danger").length;
-  return {
-    alerts: enriched,
-    total_budget: enriched.reduce((s, a) => s + a.budget_limit, 0),
-    total_spent: enriched.reduce((s, a) => s + a.spent, 0),
-    over_budget_count: over,
-    warning_count: warning,
-  };
+  return apiFetch("/budget-alerts/full") as Promise<BudgetAlertResponse>;
 }
 
 

@@ -24,7 +24,43 @@ class UserOut(BaseModel):
 
 class TokenOut(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
+    mfa_required: bool = False
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class MFALoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+    totp_code: str
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+
+class OnboardingCategoryItem(BaseModel):
+    name: str
+    type: str = "expense"
+    budget_limit: Optional[float] = None
+
+
+class OnboardingCategoriesSetup(BaseModel):
+    categories: List[OnboardingCategoryItem]
+
+
+class OnboardingProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    country: Optional[str] = None
+    currency: Optional[str] = None
+    income_level: Optional[str] = None
+    financial_knowledge: Optional[str] = None
+    risk_tolerance: Optional[str] = None
 
 
 # --- Catégories ---
@@ -229,6 +265,13 @@ class AchievementOut(BaseModel):
     progress: float  # 0.0 to 1.0
     unlock_date: Optional[str] = None
 
+
+class AchievementsResponse(BaseModel):
+    achievements: List[AchievementOut]
+    xp: int
+    level: str
+    level_progress: float  # 0.0 to 1.0 — progress within current level
+
 # --- AI Coach ---
 class ChatMessage(BaseModel):
     message: str
@@ -381,6 +424,21 @@ class BudgetAlertCheckOut(BaseModel):
     current_spending: float
     percentage: float
     is_exceeded: bool
+
+
+class BudgetAlertEnrichedOut(BudgetAlertOut):
+    status: str  # 'safe' | 'warning' | 'danger' | 'exceeded'
+    percentage: float
+    spent: float
+    remaining: float
+
+class BudgetAlertsFullOut(BaseModel):
+    alerts: List[BudgetAlertEnrichedOut]
+    total_budget: float
+    total_spent: float
+    over_budget_count: int
+    warning_count: int
+    month: str
 
 
 # --- Global Search ---
