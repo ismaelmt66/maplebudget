@@ -36,6 +36,8 @@ export default function NotificationBell() {
       try {
         const data = await getNotifications();
         if (active) setNotifs(data);
+      } catch {
+        // Ignore notification fetch errors to avoid breaking the menu
       } finally {
         if (active) setLoading(false);
       }
