@@ -53,7 +53,7 @@ export default function GoalsPage(): React.JSX.Element {
         startTransition(() => setErr((e as Error)?.message ?? "Erreur"));
       }
     }
-  }, []);
+  }, [setErr, setGoals, setPlans]);
 
   useEffect(() => {
     void load();
