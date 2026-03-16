@@ -28,7 +28,6 @@ export default function GoalsPage(): React.JSX.Element {
 
   const load = useCallback(async () => {
     try {
-      await Promise.resolve();
       startTransition(() => setErr(null));
       const g = await getGoals();
       startTransition(() => setGoals(g));

@@ -1,1 +1,2 @@
-content = open('main.py','r',encoding='utf-8').read() 
+with open("main.py", "r", encoding="utf-8") as f:
+    content = f.read()
