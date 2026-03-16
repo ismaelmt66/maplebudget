@@ -134,7 +134,14 @@ class RecurringDetectionEngine:
         # Remove noise words
         noise_pattern = r'\b(payment to|payment|debit|purchase|card|tkn|transaction|pre-authorized|withdrawal|charges|invoice|online)\b'
         name = re.sub(noise_pattern, '', name, flags=re.IGNORECASE)
-        # Remove characters that are often noise separators, but keep . for domains
+        # Normalize domain-like suffixes (e.g., ".com", ".ca") and standalone country codes.
+        # Word boundaries avoid stripping substrings inside normal words (e.g., "california").
+        # The overlap between suffixes and country tokens is intentional to catch both styles.
+        name = re.sub(r'\.(com|net|org|io|co|ca|fr|de|uk|us)\b', '', name)
+        name = re.sub(r'\b(?:ca|us|fr|uk|de|es|it|jp|au|nz)\b', '', name)
+        # Replace punctuation separators with spaces to keep core brand tokens
+        name = re.sub(r'[./]', ' ', name)
+        # Remove characters that are often noise separators
         name = re.sub(r'[\*_#\d]', ' ', name)
         # Consolidate whitespace
         name = re.sub(r'\s+', ' ', name).strip()
