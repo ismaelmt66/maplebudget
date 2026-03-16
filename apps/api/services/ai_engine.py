@@ -762,7 +762,7 @@ class FinancialAIEngine:
                 pct = current / target * 100
                 if 80 <= pct < 100:
                     notifications.append({
-            "title": "🎯 Objectif presque atteint",
+                        "title": "🎯 Objectif presque atteint",
                         "body": f"Tu es à {pct:.0f}% de ton objectif « {goal.title} » ! Plus que {target - current:,.0f}$ à accumuler.",
                         "type": "goal",
                     })

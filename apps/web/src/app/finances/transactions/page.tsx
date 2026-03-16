@@ -72,8 +72,6 @@ export default function TransactionsPage(): React.JSX.Element {
       } else {
         setErr((e as Error)?.message ?? "Erreur");
       }
-    } finally {
-      /* no-op */
     }
   }, [categoryId]);
 
