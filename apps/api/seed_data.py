@@ -164,8 +164,8 @@ def seed():
     db.commit()
     print("Created budget alerts")
 
-    print(f"\n=== Seed complete ===")
-    print(f"Login: demo@nexledger.com / demo1234")
+    print("\n=== Seed complete ===")
+    print("Login: demo@nexledger.com / demo1234")
 
 
 if __name__ == "__main__":

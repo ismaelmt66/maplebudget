@@ -16,7 +16,6 @@ import logging
 import os
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -25,7 +24,6 @@ from banking.providers.base_provider import (
     BaseBankingProvider,
     ExchangeResult,
     LinkTokenResult,
-    NormalizedTransaction,
     SyncResult,
 )
 

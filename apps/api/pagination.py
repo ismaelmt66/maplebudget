@@ -14,7 +14,7 @@ Usage in routers:
 
 from __future__ import annotations
 
-from typing import Any, Generic, List, Optional, TypeVar
+from typing import Any, Generic, List, TypeVar
 
 from fastapi import Query
 from pydantic import BaseModel

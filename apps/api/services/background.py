@@ -20,12 +20,11 @@ Usage:
 from __future__ import annotations
 
 import logging
-import traceback
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable
 
-from cache import cache_delete, cache_get, cache_set
+from cache import cache_get, cache_set
 
 logger = logging.getLogger("nexledger.background")
 

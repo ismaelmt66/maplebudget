@@ -194,7 +194,6 @@ def parse_ofx(content: str) -> tuple[list[ImportedTransaction], list[str]]:
 
         for stmttrn in root.iter("STMTTRN"):
             try:
-                trntype_el = stmttrn.find("TRNTYPE")
                 dtposted_el = stmttrn.find("DTPOSTED")
                 trnamt_el = stmttrn.find("TRNAMT")
                 name_el = stmttrn.find("NAME")
@@ -207,7 +206,7 @@ def parse_ofx(content: str) -> tuple[list[ImportedTransaction], list[str]]:
                 amount = float(trnamt_el.text.strip())
                 date_str = _ofx_date_to_ymd(dtposted_el.text) if dtposted_el is not None and dtposted_el.text else None
                 if not date_str:
-                    errors.append(f"Skipping transaction with invalid date")
+                    errors.append("Skipping transaction with invalid date")
                     continue
 
                 desc = (name_el.text if name_el is not None and name_el.text else
@@ -247,7 +246,6 @@ _CATEGORY_KEYWORDS: dict[str, list[str]] = {
 def auto_categorize(description: str, categories: list[models.Category]) -> Optional[int]:
     """Match a transaction description to an existing user category using keyword heuristics."""
     desc_lower = description.lower()
-    cat_name_map = {c.name.lower(): c for c in categories}
 
     for keyword_cat, keywords in _CATEGORY_KEYWORDS.items():
         if any(kw in desc_lower for kw in keywords):

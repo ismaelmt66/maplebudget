@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, createGoal, deleteGoal, getGoalPlan, getGoals, updateGoal, Goal, GoalPlan } from "@/lib/api";
 
 // importer les helpers de formatage partagés du module commun
@@ -16,8 +16,6 @@ export default function GoalsPage(): React.JSX.Element {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [plans, setPlans] = useState<Record<number, GoalPlan>>({});
   const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
 
   // formulaire de création
   const [title, setTitle] = useState("Voiture");
@@ -28,12 +26,11 @@ export default function GoalsPage(): React.JSX.Element {
   // dépôt par objectif
   const [depositByGoal, setDepositByGoal] = useState<Record<number, number>>({});
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
-      setErr(null);
-      setLoading(true);
+      startTransition(() => setErr(null));
       const g = await getGoals();
-      setGoals(g);
+      startTransition(() => setGoals(g));
 
       const pairs = await Promise.all(
         g.map(async (x) => {
@@ -48,22 +45,19 @@ export default function GoalsPage(): React.JSX.Element {
 
       const next: Record<number, GoalPlan> = {};
       for (const [id, p] of pairs) if (p) next[id] = p;
-      setPlans(next);
+      startTransition(() => setPlans(next));
     } catch (e: unknown) {
       if (e instanceof ApiError && e.status === 401) {
-        setErr("Tu dois être connecté pour gérer les objectifs.");
+        startTransition(() => setErr("Tu dois être connecté pour gérer les objectifs."));
       } else {
-        setErr((e as Error)?.message ?? "Erreur");
+        startTransition(() => setErr((e as Error)?.message ?? "Erreur"));
       }
-    } finally {
-      setErr(null);
-      setLoading(false);
     }
-  }
+  }, [setErr, setGoals, setPlans]);
 
   useEffect(() => {
-    load();
-  }, []);
+    void load();
+  }, [load]);
 
   const totals = useMemo(() => {
     const target = goals.reduce((s, g) => s + Number(g.target_amount), 0);

@@ -19,14 +19,13 @@ import {
 } from "@/lib/api";
 
 // les helpers de formatage commun sont centralisés
-import { money, downloadCSV } from "@/lib/format";
+import { money } from "@/lib/format";
 import { useToast } from "@/components/ui/Toast";
 
 export default function TransactionsPage(): React.JSX.Element {
   const [cats, setCats] = useState<Category[]>([]);
   const [txs, setTxs] = useState<Transaction[]>([]);
   const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true); // Keeping it as it might be used later or loading states can be added to buttons. Let's just remove it if unused, but it's used in load(). Wait, if it's used in load() it's assigned but never read? Let's check lines 62 and 74. Yes, it's set but never read in render. We'll simply ignore or remove `loading`. Let's remove it entirely.
   const { addToast } = useToast();
 
   // Formulaire catégories
@@ -63,7 +62,6 @@ export default function TransactionsPage(): React.JSX.Element {
   const load = React.useCallback(async () => {
     try {
       setErr(null);
-      setLoading(true);
       const [c, t] = await Promise.all([getCategories(), getTransactions()]);
       setCats(c);
       setTxs(t);
@@ -74,8 +72,6 @@ export default function TransactionsPage(): React.JSX.Element {
       } else {
         setErr((e as Error)?.message ?? "Erreur");
       }
-    } finally {
-      setLoading(false);
     }
   }, [categoryId]);
 

@@ -7,7 +7,7 @@ with open('main.py', 'r', encoding='utf-8', errors='replace') as f:
 # and insert include_router call after it
 # We look for the line after the closing ')' of add_middleware
 
-already_patched = any("include_router(subscriptions_router" in l for l in lines)
+already_patched = any("include_router(subscriptions_router" in line for line in lines)
 if already_patched:
     print("Already patched!")
 else:

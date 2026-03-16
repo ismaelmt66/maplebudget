@@ -30,11 +30,21 @@ export default function NotificationBell() {
 
   useEffect(() => {
     if (!getToken()) return;
-    setLoading(true);
-    getNotifications()
-      .then(setNotifs)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    let active = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await getNotifications();
+        if (active) setNotifs(data);
+      } catch {
+        // Ignore notification fetch errors to avoid breaking the menu
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Fermer en cliquant ailleurs
