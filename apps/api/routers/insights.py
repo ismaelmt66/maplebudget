@@ -65,7 +65,7 @@ def mark_all_read(
 ):
     db.query(models.Notification).filter(
         models.Notification.user_id == current.id,
-        models.Notification.is_read == False,
+        models.Notification.is_read.is_(False),
     ).update({"is_read": True})
     db.commit()
     return {"ok": True}

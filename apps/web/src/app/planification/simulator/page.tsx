@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { simulateProjection, type SimulatorResult, type SimulatorProjection } from "@/lib/api";
+import { simulateProjection, type SimulatorResult } from "@/lib/api";
 import { money } from "@/lib/format";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, ReferenceLine, ReferenceDot,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer,
 } from "recharts";
 
 /* ------------------------------------------------------------------ */
@@ -144,22 +144,22 @@ export default function SimulatorPage() {
   }
 
   /* ---- Chart data merging ---- */
-  const { chartData, maxYear } = useMemo(() => {
+  const chartData = useMemo(() => {
     const allProjections = [baselineResult, currentResult, ...savedScenarios.map(s => s.result)];
     const maxYear = allProjections.reduce((max, r) => Math.max(max, r?.projections.length ?? 0), 0);
-    if (maxYear === 0) return { chartData: [], maxYear: 0 };
-    
+    if (maxYear === 0) return [];
+
     const data = Array.from({ length: maxYear }, (_, i) => {
         const year = i + 1;
-        const row: Record<string, any> = { name: `An ${year}` };
-        
+        const row: Record<string, number | string> = { name: `An ${year}` };
+
         if (baselineResult && i < baselineResult.projections.length) {
             row["Patrimoine de base"] = baselineResult.projections[i].optimized;
         }
         if (currentResult && i < currentResult.projections.length) {
             row[currentParams.name] = currentResult.projections[i].optimized;
         }
-        savedScenarios.forEach((s, idx) => {
+        savedScenarios.forEach((s) => {
             if (s.result && i < s.result.projections.length) {
                 row[s.params.name] = s.result.projections[i].optimized;
             }
@@ -167,7 +167,7 @@ export default function SimulatorPage() {
         return row;
     });
 
-    return { chartData: data, maxYear };
+    return data;
   }, [baselineResult, currentResult, savedScenarios, currentParams.name]);
 
 
@@ -182,7 +182,7 @@ export default function SimulatorPage() {
           </span>
         </h1>
         <p className="text-white/50 mt-2 max-w-2xl">
-          Visualisez l'évolution de votre patrimoine. Ajustez votre épargne, vos dépenses et vos placements pour comparer jusqu'à {MAX_SCENARIOS+1} scénarios.
+          Visualisez l&apos;évolution de votre patrimoine. Ajustez votre épargne, vos dépenses et vos placements pour comparer jusqu&apos;à {MAX_SCENARIOS + 1} scénarios.
         </p>
       </div>
 

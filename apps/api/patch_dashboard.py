@@ -1,7 +1,6 @@
 """
 Patch dashboard/page.tsx to replace the JSX return block from line 681 onwards.
 """
-import os
 
 FILEPATH = r"c:\Users\takou\Documents\maplebudget\apps\web\src\app\dashboard\page.tsx"
 

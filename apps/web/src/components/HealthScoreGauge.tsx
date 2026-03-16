@@ -92,7 +92,6 @@ function CircularGauge({ score, color }: { score: number; color: string }) {
 
   useEffect(() => {
     start.current = null;
-    setDisplayed(0);
     const duration = 1200;
     function step(ts: number) {
       if (!start.current) start.current = ts;

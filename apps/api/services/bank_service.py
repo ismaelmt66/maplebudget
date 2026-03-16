@@ -18,7 +18,6 @@ DEMO_MODE = not (PLAID_CLIENT_ID and PLAID_SECRET)
 
 def _make_plaid_client():
     from plaid.api import plaid_api
-    from plaid.model.products import Products
     import plaid
 
     cfg = plaid.Configuration(

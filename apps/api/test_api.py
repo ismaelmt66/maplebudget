@@ -1,5 +1,5 @@
 """Debug script - fetch transactions and catch detailed errors."""
-import requests, traceback, sys
+import requests
 
 BASE = "http://localhost:8000"
 

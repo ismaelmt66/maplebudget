@@ -23,14 +23,13 @@ const typeIcons: Record<string, string> = {
 export default function NotificationBell() {
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !!getToken());
   const panelRef = useRef<HTMLDivElement>(null);
 
   const unread = notifs.filter((n) => !n.is_read).length;
 
   useEffect(() => {
     if (!getToken()) return;
-    setLoading(true);
     getNotifications()
       .then(setNotifs)
       .catch(() => {})

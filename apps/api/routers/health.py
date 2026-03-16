@@ -4,7 +4,6 @@ Heavy business logic has been extracted to services/health_service.py.
 This router is now a thin HTTP adapter.
 """
 
-import os
 from typing import List
 
 from fastapi import APIRouter, Depends

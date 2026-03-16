@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ChatSession, getSessions, deleteSession, clearAllSessions, AI_NAME } from "@/lib/useChatHistory";
 
@@ -25,12 +25,8 @@ function stripMarkdown(text: string) {
 }
 
 export default function CoachHistoryPage() {
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [sessions, setSessions] = useState<ChatSession[]>(() => getSessions());
   const [expanded, setExpanded] = useState<string | null>(null);
-
-  useEffect(() => {
-    setSessions(getSessions());
-  }, []);
 
   function handleDelete(id: string) {
     deleteSession(id);

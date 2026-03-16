@@ -117,8 +117,8 @@ export default function OnboardingPage() {
 
       await completeOnboarding();
       r.push("/dashboard");
-    } catch (e: any) {
-      setErr(e?.message ?? "Une erreur est survenue.");
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Une erreur est survenue.");
     } finally {
       setLoading(false);
     }
@@ -366,7 +366,7 @@ export default function OnboardingPage() {
               <div className="space-y-4 mb-8">
                 <div>
                   <label className="block text-sm font-medium text-white/70 mb-2">
-                    Nom de l'objectif
+                    Nom de l&apos;objectif
                   </label>
                   <input
                     type="text"

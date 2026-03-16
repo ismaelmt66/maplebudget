@@ -16,8 +16,6 @@ export default function GoalsPage(): React.JSX.Element {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [plans, setPlans] = useState<Record<number, GoalPlan>>({});
   const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
 
   // formulaire de création
   const [title, setTitle] = useState("Voiture");
@@ -31,7 +29,6 @@ export default function GoalsPage(): React.JSX.Element {
   async function load() {
     try {
       setErr(null);
-      setLoading(true);
       const g = await getGoals();
       setGoals(g);
 
@@ -57,7 +54,6 @@ export default function GoalsPage(): React.JSX.Element {
       }
     } finally {
       setErr(null);
-      setLoading(false);
     }
   }
 

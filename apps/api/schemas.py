@@ -70,15 +70,6 @@ class OnboardingProfileUpdate(BaseModel):
     risk_tolerance: Optional[str] = None
 
 
-class OnboardingProfileUpdate(BaseModel):
-    name: Optional[str] = None
-    country: Optional[str] = None
-    currency: Optional[str] = None
-    income_level: Optional[str] = None
-    financial_knowledge: Optional[str] = None
-    risk_tolerance: Optional[str] = None
-
-
 # --- Catégories ---
 
 class CategoryCreate(BaseModel):

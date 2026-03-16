@@ -31,7 +31,7 @@ for table, columns in migrations.items():
         if column not in existing:
             print(f"  Adding {table}.{column}...")
             cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
-            print(f"  Done.")
+            print("  Done.")
         else:
             print(f"  {table}.{column} already exists.")
 
